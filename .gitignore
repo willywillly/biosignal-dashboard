@@ -1,0 +1,24 @@
+# Large data files not needed for demo
+data/heart_rate.json
+data/active_energy.json
+data/hrv.json
+
+# Apple Health exports (sensitive + large)
+*.zip
+export.xml
+apple_health_export/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Editor
+.vscode/
+*.swp
+*.swo
