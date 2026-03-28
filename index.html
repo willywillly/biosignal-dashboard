@@ -1399,7 +1399,10 @@ async function fetchCadenceInsight(meta, score) {
   try {
     const res  = await fetch(`${CADENCE_API}/narrate`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Cadence-Key': 'cad-f7x2-9kqm-3wpl',
+      },
       body:    JSON.stringify(payload),
     });
 
