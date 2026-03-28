@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rhythm · Sleep Analysis</title>
+  <title>Cadence · Circadian Intelligence</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <style>
@@ -284,6 +284,25 @@
   .corr-delta-value { font-size: 34px; font-weight: 800; color: var(--lime); letter-spacing: -.03em; }
   .corr-insight { padding: 16px 18px; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; }
 
+  /* ── Modals ── */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .modal-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:32px 28px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
+  .modal-card-sm { max-width:420px; }
+  .modal-logo { font-size:15px; font-weight:700; letter-spacing:-.02em; display:flex; align-items:center; gap:6px; margin-bottom:18px; }
+  .modal-logo-dot { width:8px; height:8px; border-radius:50%; background:var(--lime); }
+  .modal-title { font-size:20px; font-weight:700; letter-spacing:-.02em; margin-bottom:6px; }
+  .modal-sub { font-size:13px; color:var(--muted); margin-bottom:24px; }
+  .survey-group { margin-bottom:20px; }
+  .survey-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:8px; }
+  .survey-chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { padding:7px 14px; border-radius:999px; border:1px solid var(--border); background:var(--surf2); font-size:13px; color:var(--text); cursor:pointer; transition:all .15s; }
+  .chip:hover { border-color:var(--purple); color:var(--purple); }
+  .chip.selected { background:var(--purple); border-color:var(--purple); color:#fff; }
+  .modal-submit { width:100%; padding:13px; background:var(--purple); color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px; transition:opacity .15s; }
+  .modal-submit:hover { opacity:.88; }
+  .modal-skip { width:100%; padding:10px; background:transparent; color:var(--muted); border:none; font-size:13px; cursor:pointer; margin-top:6px; }
+  .modal-skip:hover { color:var(--text); }
+
   /* ── Cadence AI insight bar ── */
   .cadence-insight-wrap { margin: 0 0 24px; padding: 18px 20px; background: linear-gradient(135deg, #1a1040 0%, #0f0f1a 100%); border: 1px solid #7252D855; border-radius: 14px; }
   .cadence-insight-header { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; margin-bottom: 10px; }
@@ -322,7 +341,7 @@
 
 <!-- ═══════════════════════ SCREEN 1: IMPORT ═══════════════════════ -->
 <div id="screen-import" class="screen active">
-  <div class="import-logo"><div class="import-logo-dot"></div>Rhythm</div>
+  <div class="import-logo"><div class="import-logo-dot"></div>Cadence</div>
   <div class="import-hero">
     <h1 class="import-h1">Your sleep,<br>decoded.</h1>
     <p class="import-sub">Drop your Apple Health export to see what your body has been quietly tracking.</p>
@@ -359,10 +378,123 @@
   </div>
 </div>
 
+<!-- ═══════════════════════ ONBOARDING SURVEY MODAL ═══════════════════════ -->
+<div id="modal-onboarding" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-logo"><div class="modal-logo-dot"></div>Cadence</div>
+    <h2 class="modal-title">Let's personalize your insights</h2>
+    <p class="modal-sub">Takes 30 seconds. Stored only on your device.</p>
+
+    <div class="survey-group">
+      <div class="survey-label">What's your main goal?</div>
+      <div class="survey-chips" id="s-goal">
+        <button class="chip" data-val="recover_better">Recover better</button>
+        <button class="chip" data-val="sleep_earlier">Sleep earlier</button>
+        <button class="chip" data-val="build_consistency">Build consistency</button>
+        <button class="chip" data-val="improve_performance">Peak performance</button>
+      </div>
+    </div>
+
+    <div class="survey-group">
+      <div class="survey-label">Your lifestyle</div>
+      <div class="survey-chips" id="s-lifestyle">
+        <button class="chip" data-val="student">Student</button>
+        <button class="chip" data-val="9-5">9–5</button>
+        <button class="chip" data-val="shift_worker">Shift worker</button>
+        <button class="chip" data-val="athlete">Athlete</button>
+        <button class="chip" data-val="freelance">Freelance</button>
+      </div>
+    </div>
+
+    <div class="survey-group">
+      <div class="survey-label">You have to be up by…</div>
+      <div class="survey-chips" id="s-wake">
+        <button class="chip" data-val="before_7am">Before 7am</button>
+        <button class="chip" data-val="7-8am">7–8am</button>
+        <button class="chip" data-val="8-9am">8–9am</button>
+        <button class="chip" data-val="after_9am">After 9am</button>
+        <button class="chip" data-val="flexible">Flexible</button>
+      </div>
+    </div>
+
+    <div class="survey-group">
+      <div class="survey-label">Caffeine habit</div>
+      <div class="survey-chips" id="s-caffeine">
+        <button class="chip" data-val="none">Don't drink it</button>
+        <button class="chip" data-val="before_2pm">Cut off before 2pm</button>
+        <button class="chip" data-val="drinks_it_late">Drink it late</button>
+      </div>
+    </div>
+
+    <div class="survey-group">
+      <div class="survey-label">Alcohol</div>
+      <div class="survey-chips" id="s-alcohol">
+        <button class="chip" data-val="never">Never</button>
+        <button class="chip" data-val="occasionally">Occasionally</button>
+        <button class="chip" data-val="regularly">Regularly</button>
+      </div>
+    </div>
+
+    <div class="survey-group">
+      <div class="survey-label">Training style</div>
+      <div class="survey-chips" id="s-training">
+        <button class="chip" data-val="none">Not training</button>
+        <button class="chip" data-val="cardio">Cardio</button>
+        <button class="chip" data-val="strength">Strength</button>
+        <button class="chip" data-val="mixed">Mixed</button>
+      </div>
+    </div>
+
+    <button class="modal-submit" id="survey-submit" onclick="submitSurvey()">Save & analyze →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ DAILY CHECK-IN MODAL ═══════════════════════ -->
+<div id="modal-checkin" class="modal-overlay" style="display:none">
+  <div class="modal-card modal-card-sm">
+    <div class="modal-logo"><div class="modal-logo-dot"></div>Cadence</div>
+    <h2 class="modal-title">Quick check-in</h2>
+    <p class="modal-sub">30 seconds · helps Cadence know what happened yesterday</p>
+
+    <div class="survey-group">
+      <div class="survey-label">How was your sleep last night?</div>
+      <div class="survey-chips" id="c-sleep-quality">
+        <button class="chip" data-val="1">😩 Rough</button>
+        <button class="chip" data-val="2">😕 Meh</button>
+        <button class="chip" data-val="3">😐 OK</button>
+        <button class="chip" data-val="4">🙂 Good</button>
+        <button class="chip" data-val="5">😄 Great</button>
+      </div>
+    </div>
+
+    <div class="survey-group">
+      <div class="survey-label">Alcohol last night?</div>
+      <div class="survey-chips" id="c-alcohol">
+        <button class="chip" data-val="no">No</button>
+        <button class="chip" data-val="yes">Yes</button>
+      </div>
+    </div>
+
+    <div class="survey-group">
+      <div class="survey-label">Stress level today (so far)</div>
+      <div class="survey-chips" id="c-stress">
+        <button class="chip" data-val="1">1 — Low</button>
+        <button class="chip" data-val="2">2</button>
+        <button class="chip" data-val="3">3 — Medium</button>
+        <button class="chip" data-val="4">4</button>
+        <button class="chip" data-val="5">5 — High</button>
+      </div>
+    </div>
+
+    <button class="modal-submit" onclick="submitCheckin()">Let's go →</button>
+    <button class="modal-skip" onclick="skipCheckin()">Skip for now</button>
+  </div>
+</div>
+
 <!-- ═══════════════════════ SCREEN 2: ANALYSIS ═══════════════════════ -->
 <div id="screen-analysis" class="screen">
   <div class="analysis-inner">
-    <div class="analysis-logo"><div class="analysis-logo-dot"></div>Rhythm</div>
+    <div class="analysis-logo"><div class="analysis-logo-dot"></div>Cadence</div>
 
     <div class="pulse-wrap" id="pulse-wrap">
       <div class="pulse-ring"></div>
@@ -381,7 +513,7 @@
         </svg>
         <div class="an-score-inner">
           <div class="an-score-num" id="an-score-num">0</div>
-          <div class="an-score-lbl">Rhythm</div>
+          <div class="an-score-lbl">Cadence</div>
         </div>
       </div>
       <div class="an-score-body">
@@ -399,8 +531,8 @@
 
 <header>
   <div class="header-left">
-    <div class="header-logo"><div class="header-logo-dot"></div>Rhythm</div>
-    <span class="header-tag">WHOOP · Apple Health</span>
+    <div class="header-logo"><div class="header-logo-dot"></div>Cadence</div>
+    <span class="header-tag">Apple Health · Circadian Intelligence</span>
   </div>
   <div class="header-date" id="header-date"></div>
 </header>
@@ -417,7 +549,7 @@
     </div>
   </div>
   <div class="hero-body">
-    <div class="hero-overline">Your Rhythm Score</div>
+    <div class="hero-overline">Your Cadence Score</div>
     <div class="hero-headline" id="hero-headline">Loading…</div>
     <div class="hero-text" id="hero-text"></div>
   </div>
@@ -905,7 +1037,7 @@ async function startAnalysis() {
   addFact(facts[2]);
 
   await delay(1600);
-  statusEl.textContent = 'Calculating your Rhythm Score…';
+  statusEl.textContent = 'Calculating your Cadence Score…';
   addFact(facts[3]);
 
   await delay(1400);
@@ -981,14 +1113,14 @@ dz.addEventListener('drop', e=>{
   e.preventDefault(); dz.classList.remove('drag-over');
   const file = e.dataTransfer.files[0];
   const result = validateFile(file);
-  if (result === 'ok' || !file) { startAnalysis(); return; }
+  if (result === 'ok' || !file) { handleFileReady(); return; }
   showDropError(result);
 });
 
 $('file-input').addEventListener('change', e => {
   const file = e.target.files[0];
   const result = validateFile(file);
-  if (result === 'ok' || !file) { startAnalysis(); return; }
+  if (result === 'ok' || !file) { handleFileReady(); return; }
   e.target.value = '';
   showDropError(result);
 });
@@ -1099,7 +1231,141 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
 
 const CADENCE_API = 'https://cadence-backend-production-281e.up.railway.app';
 
+// ── localStorage keys ─────────────────────────────────────────────────────
+const KEY_PROFILE   = 'cadence_profile';
+const KEY_CHECKIN   = 'cadence_checkin_date';
+const KEY_CONTEXT   = 'cadence_context_log';  // rolling array of daily summaries
+
+// ── Survey & check-in state ───────────────────────────────────────────────
+let _pendingFile = null; // holds the file drop event while modals are open
+
+// Called by the file drop/select handlers instead of startAnalysis() directly
+function handleFileReady() {
+  const profile = getProfile();
+  if (!profile) {
+    showModal('modal-onboarding');
+  } else if (!checkedInToday()) {
+    showModal('modal-checkin');
+  } else {
+    startAnalysis();
+  }
+}
+
+function showModal(id) {
+  document.getElementById(id).style.display = 'flex';
+}
+function hideModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+// ── Chip selection ────────────────────────────────────────────────────────
+document.querySelectorAll('.survey-chips').forEach(group => {
+  group.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+  });
+});
+
+function getChipVal(groupId) {
+  const sel = document.querySelector(`#${groupId} .chip.selected`);
+  return sel ? sel.dataset.val : null;
+}
+
+// ── Onboarding survey ─────────────────────────────────────────────────────
+function submitSurvey() {
+  const profile = {
+    goal:           getChipVal('s-goal'),
+    lifestyle:      getChipVal('s-lifestyle'),
+    wake_constraint:getChipVal('s-wake'),
+    caffeine:       getChipVal('s-caffeine'),
+    alcohol:        getChipVal('s-alcohol'),
+    training_style: getChipVal('s-training'),
+  };
+  // Require at least goal and lifestyle before saving
+  if (!profile.goal || !profile.lifestyle) {
+    alert('Please pick at least a goal and lifestyle to continue.');
+    return;
+  }
+  saveProfile(profile);
+  hideModal('modal-onboarding');
+  if (!checkedInToday()) {
+    showModal('modal-checkin');
+  } else {
+    startAnalysis();
+  }
+}
+
+// ── Daily check-in ────────────────────────────────────────────────────────
+function submitCheckin() {
+  const entry = {
+    date:          today(),
+    sleep_quality: getChipVal('c-sleep-quality'),
+    alcohol:       getChipVal('c-alcohol'),
+    stress:        getChipVal('c-stress'),
+  };
+  appendContext(`${entry.date}: sleep_quality=${entry.sleep_quality||'?'}, alcohol_last_night=${entry.alcohol||'?'}, stress=${entry.stress||'?'}`);
+  localStorage.setItem(KEY_CHECKIN, today());
+  hideModal('modal-checkin');
+  startAnalysis();
+}
+
+function skipCheckin() {
+  localStorage.setItem(KEY_CHECKIN, today());
+  hideModal('modal-checkin');
+  startAnalysis();
+}
+
+// ── Context accumulator ───────────────────────────────────────────────────
+// After each dashboard render, saves a one-line summary to a rolling log.
+// The last 30 entries are sent to the backend as context_block on every call.
+function saveSessionSummary(score, meta) {
+  const line = `${today()}: cadence_score=${score}, bedtime=${fmtHour(meta.medianOnset%24)}, sleep=${meta.avgSleepHrs.toFixed(1)}h, variance=${Math.round(meta.onsetSdMin)}min, jetlag=${Math.round(meta.jetlagMin||0)}min`;
+  appendContext(line);
+}
+
+function appendContext(line) {
+  const log = getContextLog();
+  log.push(line);
+  // Keep only the last 60 entries (~2 months of daily use)
+  if (log.length > 60) log.splice(0, log.length - 60);
+  localStorage.setItem(KEY_CONTEXT, JSON.stringify(log));
+}
+
+function getContextLog() {
+  try { return JSON.parse(localStorage.getItem(KEY_CONTEXT) || '[]'); } catch { return []; }
+}
+
+function buildContextBlock() {
+  const log = getContextLog();
+  if (!log.length) return null;
+  // Send the last 30 entries so we don't blow up the prompt
+  return log.slice(-30).join('\n');
+}
+
+// ── Profile helpers ───────────────────────────────────────────────────────
+function saveProfile(profile) {
+  localStorage.setItem(KEY_PROFILE, JSON.stringify(profile));
+}
+
+function getProfile() {
+  try { return JSON.parse(localStorage.getItem(KEY_PROFILE)); } catch { return null; }
+}
+
+// ── Check-in helpers ──────────────────────────────────────────────────────
+function today() {
+  return new Date().toISOString().slice(0, 10); // "2026-03-28"
+}
+
+function checkedInToday() {
+  return localStorage.getItem(KEY_CHECKIN) === today();
+}
+
 async function fetchCadenceInsight(meta, score) {
+  // Save this session to the rolling context log before sending
+  saveSessionSummary(score, meta);
+
   const payload = {
     readiness_score:          score,
     avg_bedtime:              fmtHour(meta.medianOnset % 24),
@@ -1109,6 +1375,8 @@ async function fetchCadenceInsight(meta, score) {
     best_workout_window:      meta.workoutWindows?.[0]?.label?.toLowerCase() || 'unknown',
     rhr_trend:                meta.deltaRhr > 0 ? 'improving' : 'stable',
     nights_analyzed:          meta.totalNights,
+    user_profile:             getProfile() || undefined,
+    context_block:            buildContextBlock() || undefined,
   };
 
   try {
