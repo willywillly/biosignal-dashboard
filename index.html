@@ -723,10 +723,27 @@ function toAngle(h){return((h/24)*Math.PI*2-Math.PI/2+Math.PI*2)%(Math.PI*2);}
 
 // ── Rhythm Score ───────────────────────────────────────────────────────────
 function rhythmScore(meta){
-  const onsetP  = Math.min(30,(meta.onsetSdMin/90)*30);
-  const jetlagP = Math.min(15,(meta.jetlagMin/120)*15);
-  const sleepP  = meta.avgSleepHrs<7 ? Math.min(20,(7-meta.avgSleepHrs)*20) : 0;
-  return Math.round(Math.max(0,Math.min(100,100-onsetP-jetlagP-sleepP)));
+  // ── Bedtime variance (0–30 pts) ─────────────────────────────────────────
+  // Linear up to 90min SD. Timing consistency is the primary circadian
+  // health marker — strongest independent predictor of daytime performance.
+  const onsetP  = Math.min(30, (meta.onsetSdMin / 90) * 30);
+
+  // ── Social jetlag (0–20 pts) ─────────────────────────────────────────────
+  // Bumped from 15 → 20. Roenneberg et al. place social jetlag as nearly as
+  // impactful as variance on metabolic and cognitive outcomes.
+  // Guard against null on users with no weekend data yet.
+  const jetlagP = Math.min(20, ((meta.jetlagMin || 0) / 120) * 20);
+
+  // ── Sleep duration (0–30 pts) ────────────────────────────────────────────
+  // Graduated: every hour under 7hrs = 10pts penalty.
+  // Old formula capped at 6hrs — 4hrs and 6hrs scored identically (wrong).
+  // New: 7h→0, 6h→10, 5h→20, ≤4h→30.
+  const sleepP  = meta.avgSleepHrs < 7
+    ? Math.min(30, (7 - meta.avgSleepHrs) * 10)
+    : 0;
+
+  // Max penalty: 80pts → minimum possible score: 20.
+  return Math.round(Math.max(0, Math.min(100, 100 - onsetP - jetlagP - sleepP)));
 }
 function rhythmMeta(score){
   if(score>=85) return{label:'Excellent', color:'#3E9B32',headline:'Your sleep rhythm is dialed in.',        hint:'You\'re one of the consistent ones. Keep protecting this window.'};
@@ -1385,15 +1402,30 @@ async function fetchCadenceInsight(meta, score) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // Parse error detail from backend before throwing
+    if (!res.ok) {
+      let detail = 'Something went wrong. Try again.';
+      try { const e = await res.json(); detail = e.detail || detail; } catch {}
+      throw new Error(detail);
+    }
+
     const data = await res.json();
 
     $('cadence-insight-body').textContent = data.narration;
-    if (data.tonight_target) {
-      $('cadence-tonight').innerHTML = `Tonight's target bedtime: <strong>${data.tonight_target}</strong>`;
+
+    // Build the footer line: tonight's target + confidence badge if low
+    let footer = data.tonight_target
+      ? `Tonight's target bedtime: <strong>${data.tonight_target}</strong>`
+      : '';
+    if (data.confidence === 'low') {
+      footer += `&nbsp;&nbsp;<span style="font-size:11px;color:var(--amber)">⚠ Low confidence — upload more nights for better accuracy</span>`;
     }
+    $('cadence-tonight').innerHTML = footer;
+
   } catch (err) {
-    $('cadence-insight-body').textContent = 'Could not load insight — check your connection.';
+    $('cadence-insight-body').textContent = err.message || 'Could not load insight. Try again.';
+    $('cadence-tonight').innerHTML = '';
     console.error('Cadence API error:', err);
   }
 }
