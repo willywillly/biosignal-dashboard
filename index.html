@@ -283,6 +283,15 @@
   .corr-value { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
   .corr-delta-value { font-size: 34px; font-weight: 800; color: var(--lime); letter-spacing: -.03em; }
   .corr-insight { padding: 16px 18px; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* ── Cadence AI insight bar ── */
+  .cadence-insight-wrap { margin: 0 0 24px; padding: 18px 20px; background: linear-gradient(135deg, #1a1040 0%, #0f0f1a 100%); border: 1px solid #7252D855; border-radius: 14px; }
+  .cadence-insight-header { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; margin-bottom: 10px; }
+  .cadence-dot { width: 7px; height: 7px; border-radius: 50%; background: #7252D8; box-shadow: 0 0 8px #7252D8; animation: pulse-dot 2s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.8); } }
+  .cadence-insight-body { font-size: 14px; color: var(--text); line-height: 1.75; }
+  .cadence-tonight { margin-top: 12px; padding-top: 10px; border-top: 1px solid #7252D820; font-size: 12px; color: var(--muted); }
+  .cadence-tonight strong { color: #7252D8; }
   .corr-insight strong { color: var(--text); font-weight: 600; }
   .corr-cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 9px 14px; background: var(--lime-bg); border: 1px solid var(--lime-border); border-radius: 8px; color: #3A7A08; font-size: 12px; font-weight: 600; }
 
@@ -439,6 +448,16 @@
     <div><span class="stat-value" id="s-jetlag">—</span><span class="stat-unit">min</span></div>
     <div id="s-jetlag-grade"></div>
   </div>
+</div>
+
+<!-- ── Cadence AI Insight ─────────────────────────────────────────────── -->
+<div class="cadence-insight-wrap" id="cadence-insight-wrap">
+  <div class="cadence-insight-header">
+    <div class="cadence-dot"></div>
+    <span>Cadence</span>
+  </div>
+  <div class="cadence-insight-body" id="cadence-insight-body">Analyzing your patterns…</div>
+  <div class="cadence-tonight" id="cadence-tonight"></div>
 </div>
 
 <div class="grid">
@@ -1070,6 +1089,45 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y} sessions`}}},
       scales:{x:{grid:{color:GC},ticks:{color:TC}},y:{grid:{color:GC},ticks:{color:TC}}}}});
+
+  // ── Cadence AI narration ──────────────────────────────────────────────────
+  // Builds a payload from the already-computed meta stats and sends it to the
+  // Railway backend, which runs the readiness algorithm and returns an insight.
+  // Raw health data never leaves the browser — only aggregates go to the server.
+  fetchCadenceInsight(meta, score);
+}
+
+const CADENCE_API = 'https://cadence-backend-production-281e.up.railway.app';
+
+async function fetchCadenceInsight(meta, score) {
+  const payload = {
+    readiness_score:          score,
+    avg_bedtime:              fmtHour(meta.medianOnset % 24),
+    avg_sleep_hours:          parseFloat(meta.avgSleepHrs.toFixed(2)),
+    bedtime_variance_minutes: parseFloat(meta.onsetSdMin.toFixed(1)),
+    social_jetlag_minutes:    parseFloat((meta.jetlagMin || 0).toFixed(1)),
+    best_workout_window:      meta.workoutWindows?.[0]?.label?.toLowerCase() || 'unknown',
+    rhr_trend:                meta.deltaRhr > 0 ? 'improving' : 'stable',
+    nights_analyzed:          meta.totalNights,
+  };
+
+  try {
+    const res  = await fetch(`${CADENCE_API}/narrate`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    $('cadence-insight-body').textContent = data.narration;
+    if (data.tonight_target) {
+      $('cadence-tonight').innerHTML = `Tonight's target bedtime: <strong>${data.tonight_target}</strong>`;
+    }
+  } catch (err) {
+    $('cadence-insight-body').textContent = 'Could not load insight — check your connection.';
+    console.error('Cadence API error:', err);
+  }
 }
 </script>
 </body>
