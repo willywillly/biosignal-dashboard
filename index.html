@@ -1246,7 +1246,9 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   fetchCadenceInsight(meta, score);
 }
 
-const CADENCE_API = 'https://cadence-backend-production-281e.up.railway.app';
+// Backend URL — override by setting window.CADENCE_API_URL before this script runs.
+// In production this points to Railway; locally use http://localhost:8000.
+const CADENCE_API = window.CADENCE_API_URL || 'https://cadence-backend-production-281e.up.railway.app';
 
 // ── localStorage keys ─────────────────────────────────────────────────────
 const KEY_PROFILE   = 'cadence_profile';
@@ -1417,18 +1419,25 @@ async function fetchCadenceInsight(meta, score) {
 
     $('cadence-insight-body').textContent = data.narration;
 
-    // Build the footer line: tonight's target + confidence badge if low
-    let footer = data.tonight_target
-      ? `Tonight's target bedtime: <strong>${data.tonight_target}</strong>`
-      : '';
-    if (data.confidence === 'low') {
-      footer += `&nbsp;&nbsp;<span style="font-size:11px;color:var(--amber)">⚠ Low confidence — upload more nights for better accuracy</span>`;
+    // Build the footer safely — no innerHTML with user-influenced data
+    const footerEl = $('cadence-tonight');
+    footerEl.textContent = '';
+    if (data.tonight_target) {
+      footerEl.appendChild(document.createTextNode("Tonight's target bedtime: "));
+      const strong = document.createElement('strong');
+      strong.textContent = data.tonight_target;
+      footerEl.appendChild(strong);
     }
-    $('cadence-tonight').innerHTML = footer;
+    if (data.confidence === 'low') {
+      const badge = document.createElement('span');
+      badge.style.cssText = 'font-size:11px;color:var(--amber);margin-left:12px';
+      badge.textContent = '\u26A0 Low confidence \u2014 upload more nights for better accuracy';
+      footerEl.appendChild(badge);
+    }
 
   } catch (err) {
     $('cadence-insight-body').textContent = err.message || 'Could not load insight. Try again.';
-    $('cadence-tonight').innerHTML = '';
+    $('cadence-tonight').textContent = '';
     console.error('Cadence API error:', err);
   }
 }
