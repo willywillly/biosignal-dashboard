@@ -584,6 +584,28 @@
 <!-- Hidden: preserves drop-zone / drop-error IDs referenced by existing JS -->
 <div id="drop-zone" style="display:none"><div id="drop-error"></div></div>
 
+<!-- ═══ SCREEN: IMPORT (returning users — skips landing animation) ═══ -->
+<div id="screen-import" class="screen">
+  <div class="import-hero">
+    <div class="import-logo"><div class="import-logo-dot"></div>Cadence</div>
+    <div class="drop-zone" id="import-drop-zone" onclick="$('file-input').click()">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#8CC63F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V8M12 8l-3 3M12 8l3 3"/>
+          <path d="M20 16.7A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/>
+        </svg>
+      </div>
+      <div class="drop-title">Drop your Apple Health export here</div>
+      <div class="drop-sub">or <button class="link-btn" onclick="event.stopPropagation();$('file-input').click()">browse files</button> &mdash; .zip or .xml</div>
+    </div>
+    <p class="drop-error" id="import-drop-error"></p>
+    <p class="privacy-note">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1L2 3v3.5C2 9 4 11 6 11s4-2 4-4.5V3L6 1z" stroke="currentColor" stroke-width="1"/></svg>
+      Your data never leaves your device
+    </p>
+  </div>
+</div>
+
 <!-- ═══════════════════════ ONBOARDING SURVEY MODAL ═══════════════════════ -->
 <div id="modal-onboarding" class="modal-overlay" style="display:none">
   <div class="modal-card">
@@ -1828,11 +1850,12 @@ function validateFile(file) {
 }
 
 function showDropError(msg) {
-  // Show on landing screen
-  const le = $('land-error');
-  if (le) {
-    le.textContent = msg;
-    setTimeout(() => { le.textContent = ''; }, 4000);
+  // Show error in whichever upload screen is currently active
+  const id = $('screen-import').classList.contains('active') ? 'import-drop-error' : 'land-error';
+  const el = $(id);
+  if (el) {
+    el.textContent = msg;
+    setTimeout(() => { el.textContent = ''; }, 4000);
   }
 }
 
@@ -1859,6 +1882,24 @@ $('file-input').addEventListener('change', e => {
   const result = validateFile(file);
   if (result === 'ok' || !file) { window._pendingFile = file; handleFileReady(); return; }
   e.target.value = '';
+  showDropError(result);
+});
+
+// ── Import screen drag-and-drop (returning users) ──────────────────────────
+const importDropZone = $('import-drop-zone');
+importDropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  importDropZone.classList.add('drag-over');
+});
+importDropZone.addEventListener('dragleave', () => {
+  importDropZone.classList.remove('drag-over');
+});
+importDropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  importDropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  const result = validateFile(file);
+  if (result === 'ok' || !file) { window._pendingFile = file; handleFileReady(); return; }
   showDropError(result);
 });
 
@@ -2302,13 +2343,13 @@ function importNewDataFromSettings() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 function boot() {
-  if (localStorage.getItem(KEY_ONBOARDED)) {
-    // Returning user: reveal landing instantly (no animation), show check-in if needed
-    $('land-title').textContent = 'Cadence';
-    ['land-line-1', 'land-line-2', 'land-privacy', 'land-btn', 'land-howto'].forEach(id => {
-      $(id).style.transition = 'none';
-      $(id).style.opacity = '1';
-    });
+  const onboarded = localStorage.getItem(KEY_ONBOARDED);
+  console.log('[Cadence] cadence_onboarded:', onboarded);
+
+  if (onboarded) {
+    // Returning user: skip landing entirely, go straight to upload screen
+    $('screen-landing').classList.remove('active');
+    $('screen-import').classList.add('active');
     if (!checkedInToday()) {
       showModal('modal-checkin');
     }
