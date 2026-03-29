@@ -4,8 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Cadence · Circadian Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -17,7 +21,7 @@
     --green:   #3E9B32;  --blue:   #2A7DC8;   --purple: #7252D8;
   }
   html, body { height: 100%; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; overflow-x: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; overflow-x: hidden; }
 
   /* ── Screen management ──────────────────────────────────────────── */
   .screen { display: none; }
@@ -84,6 +88,54 @@
     padding: 9px 22px; cursor: pointer; transition: all .15s; letter-spacing: -.01em;
   }
   .demo-btn:hover { border-color: var(--text); color: var(--text); }
+
+  /* ── SCREEN 1: LANDING ──────────────────────────────────────────── */
+  #screen-landing {
+    min-height: 100vh; align-items: center; justify-content: center;
+    background: var(--bg);
+  }
+  .landing-inner {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; width: 100%; max-width: 400px; padding: 48px 24px;
+  }
+  .land-title {
+    font-size: 64px; font-weight: 800; letter-spacing: -.04em; line-height: 1;
+    color: var(--text); margin-bottom: 32px; min-height: 72px;
+  }
+  .land-lines { margin-bottom: 20px; }
+  .land-line {
+    font-size: 22px; font-weight: 400; color: var(--text); line-height: 1.4;
+    opacity: 0; transition: opacity 600ms ease;
+  }
+  .land-line + .land-line { margin-top: 2px; }
+  .land-privacy {
+    font-size: 13px; font-weight: 400; color: var(--muted); line-height: 1.6;
+    opacity: 0; transition: opacity 500ms ease; margin-bottom: 32px;
+  }
+  .land-btn {
+    width: 100%; max-width: 320px; padding: 16px 24px;
+    background: var(--lime); color: var(--text); border: none; border-radius: 8px;
+    font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
+    opacity: 0; transition: opacity 400ms ease, background .15s;
+    letter-spacing: -.01em;
+  }
+  .land-btn:hover { background: #7DB535; }
+  .land-howto { margin-top: 20px; opacity: 0; transition: opacity 400ms ease; }
+  .land-howto-toggle {
+    background: none; border: none; font-family: inherit; font-size: 12px;
+    font-weight: 400; color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; gap: 5px; padding: 4px 0; transition: color .15s;
+  }
+  .land-howto-toggle:hover { color: var(--text); }
+  .land-howto-toggle svg { transition: transform 300ms ease; flex-shrink: 0; }
+  .land-howto-body {
+    max-height: 0; overflow: hidden; opacity: 0;
+    transition: max-height 300ms ease, opacity 300ms ease;
+  }
+  .land-howto-body.open { opacity: 1; padding-top: 12px; }
+  .land-howto-body ol { font-size: 12px; color: var(--muted); line-height: 2; padding-left: 18px; text-align: left; }
+  .land-howto-body strong { color: var(--text); font-weight: 600; }
+  .land-error { font-size: 12px; color: var(--red); margin-top: 14px; min-height: 18px; font-weight: 500; }
 
   /* ── SCREEN 2: ANALYSIS ─────────────────────────────────────────── */
   #screen-analysis {
@@ -184,8 +236,9 @@
   .header-tag  { font-size: 11px; background: var(--lime-bg); border: 1px solid var(--lime-border); color: #4A8A10; border-radius: 20px; padding: 2px 10px; font-weight: 500; }
   .header-date { font-size: 12px; color: var(--muted); }
 
-  /* Hero */
-  .hero { display: flex; align-items: center; gap: 32px; padding: 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  /* Hero block */
+  .hero-block { display: flex; align-items: flex-start; gap: 28px; padding: 28px 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .hero-score-col { display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0; }
   .score-wrap { position: relative; flex-shrink: 0; width: 110px; height: 110px; }
   .score-svg  { width: 110px; height: 110px; transform: rotate(-90deg); display: block; }
   .score-track { fill: none; stroke: var(--border); stroke-width: 7; }
@@ -194,42 +247,69 @@
   .score-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .score-num  { font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
   .score-tag  { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 2px; }
-  .hero-body  { flex: 1; min-width: 0; }
-  .hero-overline  { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); margin-bottom: 6px; }
-  .hero-headline  { font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: -.02em; margin-bottom: 8px; }
-  .hero-text      { font-size: 13px; color: var(--muted); line-height: 1.65; max-width: 540px; }
-  .hero-text strong { color: var(--text); font-weight: 600; }
-  .hero-cta { flex-shrink: 0; background: var(--lime-bg); border: 1px solid var(--lime-border); border-radius: 14px; padding: 18px 22px; min-width: 175px; }
-  .cta-overline { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #4A8A10; margin-bottom: 10px; }
-  .cta-label-sm { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .cta-time     { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -.02em; line-height: 1.1; }
-  .cta-row      { margin-bottom: 6px; }
+  .hero-headline { font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; letter-spacing: -.01em; max-width: 130px; line-height: 1.4; }
 
-  /* Stats bar */
-  .stats-bar { display: grid; grid-template-columns: repeat(4,1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
-  .stat { padding: 18px 24px; border-right: 1px solid var(--border); min-width: 120px; opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; }
-  .stat.in { opacity: 1; transform: none; }
-  .stat:last-child { border-right: none; }
-  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: 5px; }
-  .stat-value { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
-  .stat-unit  { font-size: 11px; color: var(--muted); margin-left: 2px; }
-  .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  /* Cadence AI card */
+  .cadence-insight-wrap { flex: 1; min-width: 0; padding: 24px 28px; background: linear-gradient(135deg, #1a1040 0%, #0f0f1a 100%); border: 1px solid #7252D855; border-radius: 16px; }
+  .cadence-insight-header { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; margin-bottom: 12px; }
+  .cadence-dot { width: 7px; height: 7px; border-radius: 50%; background: #7252D8; box-shadow: 0 0 8px #7252D8; animation: pulse-dot 2s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.8); } }
+
+  /* Loading dots */
+  .cadence-loading { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+  .cadence-dots { display: flex; gap: 5px; }
+  .cdot { width: 8px; height: 8px; border-radius: 50%; background: #7252D8; animation: cdot-pulse 1.4s ease-in-out infinite; }
+  .cdot:nth-child(2) { animation-delay: .2s; }
+  .cdot:nth-child(3) { animation-delay: .4s; }
+  @keyframes cdot-pulse { 0%,80%,100%{ opacity:.25; transform:scale(.75); } 40%{ opacity:1; transform:scale(1); } }
+  .cadence-loading-text { font-size: 13px; color: rgba(255,255,255,.45); }
+
+  .cadence-insight-body { font-size: 16px; color: rgba(255,255,255,.82); line-height: 1.75; font-weight: 400; }
+  .cadence-tonight-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(114,82,216,.15); }
+  .cadence-tonight-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.35); margin-bottom: 4px; }
+  .cadence-tonight-time { font-size: 36px; font-weight: 800; color: #7252D8; letter-spacing: -.03em; line-height: 1; }
+  .cadence-tonight-conf { font-size: 11px; color: var(--amber); margin-top: 6px; }
+
+  /* Card headers (shared) */
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .card-title  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+  .card-meta   { font-size: 11px; color: var(--faint); }
+
+  /* Grade badges */
   .grade { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .05em; padding: 1px 7px; border-radius: 4px; margin-top: 4px; }
   .grade-green  { background: rgba(62,155,50,.10);  color: #2B7225; border: 1px solid rgba(62,155,50,.2); }
   .grade-blue   { background: rgba(42,125,200,.10); color: #1A5FA0; border: 1px solid rgba(42,125,200,.2); }
   .grade-orange { background: rgba(196,128,12,.10); color: #7A4C00; border: 1px solid rgba(196,128,12,.25); }
   .grade-red    { background: rgba(214,75,57,.10);  color: #9A1A0A; border: 1px solid rgba(214,75,57,.2); }
 
-  /* Grid */
-  .grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 1px; background: var(--border); }
-  .card { background: var(--surface); padding: 24px 28px; }
-  .card-full { grid-column: span 6; }
-  .card-2    { grid-column: span 2; }
-  .card-4    { grid-column: span 4; }
-  .card-3    { grid-column: span 3; }
-  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-  .card-title  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
-  .card-meta   { font-size: 11px; color: var(--faint); }
+  /* Accordion sections */
+  .acc-section { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .acc-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; cursor: pointer; user-select: none; min-height: 56px; transition: background .15s; }
+  .acc-header:hover { background: var(--surf2); }
+  .acc-title { font-size: 14px; font-weight: 700; letter-spacing: -.015em; color: var(--text); }
+  .acc-chevron { display: flex; align-items: center; justify-content: center; color: var(--faint); transition: transform 300ms ease; flex-shrink: 0; margin-left: 12px; }
+  .acc-section.open .acc-chevron { transform: rotate(180deg); }
+  .acc-body { overflow: hidden; max-height: 0; transition: max-height 300ms ease; }
+  .acc-section.open .acc-body { max-height: 3000px; }
+  .acc-inner { padding: 4px 32px 32px; }
+
+  /* Stats row inside History accordion */
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+  .stat { padding: 18px 20px; background: var(--surface); opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; }
+  .stat.in { opacity: 1; transform: none; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: 5px; }
+  .stat-value { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
+  .stat-unit  { font-size: 11px; color: var(--muted); margin-left: 2px; }
+  .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* Accordion inner grid */
+  .acc-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; margin-top: 0; }
+  .acc-grid + .acc-grid { margin-top: 20px; }
+  .acc-card { background: var(--surface); padding: 24px 24px; }
+  .acc-card-full { grid-column: span 6; }
+  .acc-card-2 { grid-column: span 2; }
+  .acc-card-4 { grid-column: span 4; }
+  .acc-card-3 { grid-column: span 3; }
 
   /* Dual clock */
   .dual-wrap { display: flex; gap: 24px; align-items: flex-start; }
@@ -325,58 +405,132 @@
   #clock-tip .tip-row span { color: var(--text); font-weight: 500; }
   #clock-tip .tip-badge { display: inline-block; margin-top: 6px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
 
+  /* ── Settings button + panel ─────────────────────────────────────── */
+  .settings-btn {
+    position: fixed; top: 20px; right: 20px; width: 36px; height: 36px;
+    border-radius: 50%; background: var(--surf2); border: 1px solid var(--border);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); z-index: 200; transition: background .15s, color .15s;
+  }
+  .settings-btn:hover { background: var(--border); color: var(--text); }
+
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 500;
+    opacity: 0; pointer-events: none; transition: opacity 300ms ease;
+  }
+  .settings-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .settings-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
+    background: var(--bg); border-left: 1px solid var(--border);
+    z-index: 600; transform: translateX(100%); transition: transform 300ms ease;
+    overflow-y: auto;
+  }
+  .settings-panel.open { transform: translateX(0); }
+
+  .sp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 1;
+  }
+  .sp-title { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+  .sp-close {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 6px; transition: background .15s, color .15s;
+  }
+  .sp-close:hover { background: var(--surf2); color: var(--text); }
+
+  .sp-section { padding: 24px 24px 0; }
+  .sp-section + .sp-section { padding-top: 28px; }
+  .sp-section:last-child { padding-bottom: 32px; }
+  .sp-section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--muted); margin-bottom: 14px;
+  }
+  .sp-label { display: block; font-size: 13px; color: var(--text); margin-bottom: 8px; }
+  .sp-input {
+    width: 100%; padding: 12px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 14px; color: var(--text);
+    outline: none; transition: border-color .15s;
+  }
+  .sp-input:focus { border-color: var(--faint); }
+  .sp-input::placeholder { color: var(--faint); }
+  .sp-btn {
+    width: 100%; padding: 12px 16px; background: var(--surf2);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 14px; color: var(--text);
+    cursor: pointer; text-align: left; transition: background .15s; display: block;
+  }
+  .sp-btn:hover { background: var(--border); }
+  .sp-small { font-size: 11px; color: var(--muted); margin-top: 10px; }
+
   @media (max-width: 960px) {
-    .hero { flex-wrap: wrap; }
-    .stats-bar { grid-template-columns: repeat(2,1fr); }
-    .card-2, .card-3, .card-4 { grid-column: span 6; }
+    .hero-block { flex-wrap: wrap; gap: 20px; }
+    .acc-card-2, .acc-card-3, .acc-card-4 { grid-column: span 6; }
     .dual-wrap { flex-wrap: wrap; }
     canvas.clock { width: 200px; height: 200px; }
     .corr-grid { grid-template-columns: 1fr 1fr; }
     .corr-box.delta { grid-column: span 2; }
     .import-h1 { font-size: 36px; }
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+  }
+
+  @media (max-width: 480px) {
+    .hero-block { flex-direction: column; padding: 20px 16px; gap: 16px; }
+    .hero-score-col { flex-direction: row; align-items: center; gap: 16px; }
+    .score-wrap { width: 90px; height: 90px; }
+    .score-svg  { width: 90px; height: 90px; }
+    .score-num  { font-size: 22px; }
+    .cadence-insight-wrap { padding: 20px; }
+    .cadence-tonight-time { font-size: 28px; }
+    .acc-header { padding: 16px 20px; }
+    .acc-inner  { padding: 4px 20px 24px; }
+    .stats-row  { grid-template-columns: 1fr 1fr; }
+    .import-h1  { font-size: 32px; }
+    .settings-panel { width: 100%; }
   }
   </style>
 </head>
 <body>
 
-<!-- ═══════════════════════ SCREEN 1: IMPORT ═══════════════════════ -->
-<div id="screen-import" class="screen active">
-  <div class="import-logo"><div class="import-logo-dot"></div>Cadence</div>
-  <div class="import-hero">
-    <h1 class="import-h1">Your sleep,<br>decoded.</h1>
-    <p class="import-sub">Drop your Apple Health export to see what your body has been quietly tracking.</p>
-
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-      <input type="file" id="file-input" accept=".zip,.xml" hidden>
-      <div class="drop-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#8CC63F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-          <path d="M8 12l4 4 4-4M12 8v8"/>
-        </svg>
-      </div>
-      <div class="drop-title">Drop export.zip here</div>
-      <div class="drop-sub">or <span class="link-btn">choose file</span></div>
+<!-- ═══════════════════════ SCREEN 1: LANDING ═══════════════════════ -->
+<div id="screen-landing" class="screen active">
+  <div class="landing-inner" id="landing-inner">
+    <div class="land-title" id="land-title"></div>
+    <div class="land-lines">
+      <div class="land-line" id="land-line-1">Your body has a rhythm.</div>
+      <div class="land-line" id="land-line-2">Now you can see it.</div>
     </div>
-    <div class="drop-error" id="drop-error"></div>
-    <p class="privacy-note">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      Analyzed on your device · never uploaded
-    </p>
-
-    <details class="how-to">
-      <summary>How do I get this file?</summary>
-      <ol>
-        <li>Open the <strong>Health</strong> app on your iPhone</li>
-        <li>Tap your profile picture (top right)</li>
-        <li>Scroll down → <strong>Export All Health Data</strong></li>
-        <li>Share or AirDrop the .zip file to your Mac</li>
-        <li>Drop it above ↑</li>
-      </ol>
-    </details>
-
-    <button class="demo-btn" onclick="startAnalysis()">Try the demo →</button>
+    <p class="land-privacy" id="land-privacy">Private by design. Your data never leaves your device.</p>
+    <input type="file" id="file-input" accept=".zip,.xml" hidden>
+    <button class="land-btn" id="land-btn" onclick="$('file-input').click()">
+      Export your Apple Health data
+    </button>
+    <div class="land-howto" id="land-howto">
+      <button class="land-howto-toggle" onclick="toggleLandHowTo()">
+        How to export your file
+        <svg id="land-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="land-howto-body" id="land-howto-body">
+        <ol>
+          <li>Open the <strong>Health</strong> app on your iPhone</li>
+          <li>Tap your profile picture (top right)</li>
+          <li>Scroll down → <strong>Export All Health Data</strong></li>
+          <li>Share or AirDrop the .zip file to your Mac</li>
+          <li>Click the button above</li>
+        </ol>
+      </div>
+    </div>
+    <div class="land-error" id="land-error"></div>
   </div>
 </div>
+
+<!-- Hidden: preserves drop-zone / drop-error IDs referenced by existing JS -->
+<div id="drop-zone" style="display:none"><div id="drop-error"></div></div>
 
 <!-- ═══════════════════════ ONBOARDING SURVEY MODAL ═══════════════════════ -->
 <div id="modal-onboarding" class="modal-overlay" style="display:none">
@@ -534,157 +688,208 @@
     <div class="header-logo"><div class="header-logo-dot"></div>Cadence</div>
     <span class="header-tag">Apple Health · Circadian Intelligence</span>
   </div>
-  <div class="header-date" id="header-date"></div>
+  <div class="header-date" id="header-date" style="padding-right:52px"></div>
 </header>
 
-<section class="hero">
-  <div class="score-wrap">
-    <svg class="score-svg" viewBox="0 0 100 100">
-      <circle class="score-track" cx="50" cy="50" r="42"/>
-      <circle class="score-arc"  id="score-arc" cx="50" cy="50" r="42"/>
-    </svg>
-    <div class="score-inner">
-      <div class="score-num" id="rhythm-score">—</div>
-      <div class="score-tag" id="rhythm-tag">—</div>
-    </div>
-  </div>
-  <div class="hero-body">
-    <div class="hero-overline">Your Cadence Score</div>
-    <div class="hero-headline" id="hero-headline">Loading…</div>
-    <div class="hero-text" id="hero-text"></div>
-  </div>
-  <div class="hero-cta">
-    <div class="cta-overline">Tonight's goal</div>
-    <div id="cta-content"></div>
-  </div>
-</section>
+<button class="settings-btn" id="settings-btn" onclick="openSettings()" title="Settings">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <circle cx="8" cy="5.5" r="2.5" fill="currentColor"/>
+    <path d="M2 15c0-3.314 2.686-5.5 6-5.5s6 2.186 6 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  </svg>
+</button>
 
-<div class="stats-bar">
-  <div class="stat" id="stat-0">
-    <div class="stat-label">You typically fall asleep at</div>
-    <div><span class="stat-value" id="s-onset">—</span></div>
-    <div class="stat-sub">median onset · <span id="s-sleep-sub"></span></div>
+<!-- ── Hero block: score ring + Cadence AI card (above the fold) ── -->
+<div class="hero-block">
+  <div class="hero-score-col">
+    <div class="score-wrap">
+      <svg class="score-svg" viewBox="0 0 100 100">
+        <circle class="score-track" cx="50" cy="50" r="42"/>
+        <circle class="score-arc" id="score-arc" cx="50" cy="50" r="42"/>
+      </svg>
+      <div class="score-inner">
+        <div class="score-num" id="rhythm-score">—</div>
+        <div class="score-tag" id="rhythm-tag">—</div>
+      </div>
+    </div>
+    <div class="hero-headline" id="hero-headline">—</div>
   </div>
-  <div class="stat" id="stat-1">
-    <div class="stat-label">And wake up around</div>
-    <div><span class="stat-value" id="s-wake">—</span></div>
-    <div class="stat-sub">avg wake time</div>
-  </div>
-  <div class="stat" id="stat-2">
-    <div class="stat-label">Getting on average</div>
-    <div><span class="stat-value" id="s-sleep">—</span><span class="stat-unit">hrs</span></div>
-    <div class="stat-sub">per night</div>
-  </div>
-  <div class="stat" id="stat-3">
-    <div class="stat-label">Weekend sleep-in by</div>
-    <div><span class="stat-value" id="s-jetlag">—</span><span class="stat-unit">min</span></div>
-    <div id="s-jetlag-grade"></div>
+
+  <div class="cadence-insight-wrap" id="cadence-insight-wrap">
+    <div class="cadence-insight-header">
+      <div class="cadence-dot"></div>
+      <span>Cadence</span>
+    </div>
+    <div class="cadence-loading" id="cadence-loading">
+      <div class="cadence-dots">
+        <div class="cdot"></div>
+        <div class="cdot"></div>
+        <div class="cdot"></div>
+      </div>
+      <span class="cadence-loading-text">Cadence is reading your data…</span>
+    </div>
+    <div class="cadence-insight-body" id="cadence-insight-body" style="display:none"></div>
+    <div class="cadence-tonight-section" id="cadence-tonight-section" style="display:none">
+      <div class="cadence-tonight-label">Tonight's target</div>
+      <div class="cadence-tonight-time" id="cadence-tonight-time">—</div>
+      <div class="cadence-tonight-conf" id="cadence-tonight-conf" style="display:none">⚠ Low confidence — upload more nights for better accuracy</div>
+    </div>
   </div>
 </div>
 
-<!-- ── Cadence AI Insight ─────────────────────────────────────────────── -->
-<div class="cadence-insight-wrap" id="cadence-insight-wrap">
-  <div class="cadence-insight-header">
-    <div class="cadence-dot"></div>
-    <span>Cadence</span>
-  </div>
-  <div class="cadence-insight-body" id="cadence-insight-body">Analyzing your patterns…</div>
-  <div class="cadence-tonight" id="cadence-tonight"></div>
-</div>
+<!-- ── Accordion sections ── -->
+<div class="acc-sections">
 
-<div class="grid">
-
-  <div class="card card-full">
-    <div class="card-header">
-      <div class="card-title">Your Circadian Pattern</div>
-      <div class="card-meta" id="clock-meta"></div>
+  <!-- Your Patterns -->
+  <div class="acc-section open" id="acc-patterns">
+    <div class="acc-header" onclick="toggleAcc('acc-patterns')">
+      <span class="acc-title">Your Patterns</span>
+      <div class="acc-chevron"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     </div>
-    <div class="dual-wrap">
-      <div class="clock-panel">
-        <div class="clock-panel-label">Every night, mapped</div>
-        <canvas id="clock-canvas" class="clock"></canvas>
-        <div class="toggle-row" style="justify-content:center;margin-top:10px">
-          <button class="toggle-btn active" id="btn-all"        onclick="setClockMode('all')">All nights</button>
-          <button class="toggle-btn"        id="btn-consistent" onclick="setClockMode('consistent')">Consistent only</button>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="acc-grid">
+          <div class="acc-card acc-card-full">
+            <div class="card-header">
+              <div class="card-title">Your Circadian Pattern</div>
+              <div class="card-meta" id="clock-meta"></div>
+            </div>
+            <div class="dual-wrap">
+              <div class="clock-panel">
+                <div class="clock-panel-label">Every night, mapped</div>
+                <canvas id="clock-canvas" class="clock"></canvas>
+                <div class="toggle-row" style="justify-content:center;margin-top:10px">
+                  <button class="toggle-btn active" id="btn-all" onclick="setClockMode('all')">All nights</button>
+                  <button class="toggle-btn" id="btn-consistent" onclick="setClockMode('consistent')">Consistent only</button>
+                </div>
+                <div class="clock-panel-sub">Hover any arc or dot for details</div>
+              </div>
+              <div class="clock-panel">
+                <div class="clock-panel-label">Your ideal schedule <span style="font-weight:400;color:var(--faint);font-size:9px;text-transform:none;letter-spacing:0">· built from your data</span></div>
+                <canvas id="blueprint-canvas" class="clock" style="cursor:default"></canvas>
+                <div class="bp-legend" id="bp-legend" style="margin-top:14px"></div>
+              </div>
+              <div class="clock-side">
+                <div class="legend-title">Sleep duration</div>
+                <div class="legend-row"><div class="legend-swatch" style="background:#D64B39"></div>&lt; 5 hrs</div>
+                <div class="legend-row"><div class="legend-swatch" style="background:#C4800C"></div>5 – 6 hrs</div>
+                <div class="legend-row"><div class="legend-swatch" style="background:#C89B0E"></div>6 – 7 hrs</div>
+                <div class="legend-row"><div class="legend-swatch" style="background:#3E9B32"></div>7 – 8 hrs (optimal)</div>
+                <div class="legend-row"><div class="legend-swatch" style="background:#2A7DC8"></div>8 – 9 hrs</div>
+                <div class="legend-row"><div class="legend-swatch" style="background:#7252D8"></div>&gt; 9 hrs</div>
+                <div class="legend-row" style="margin-top:8px"><div class="legend-dot" style="background:#C89B0E"></div>Workout session</div>
+              </div>
+            </div>
+            <div class="insight-box clock-insight-row" id="clock-insight">Loading…</div>
+          </div>
+
+          <div class="acc-card acc-card-2">
+            <div class="card-header"><div class="card-title">How consistent are you?</div></div>
+            <div class="c-stack" id="c-stack"></div>
+          </div>
+
+          <div class="acc-card acc-card-4">
+            <div class="card-header">
+              <div class="card-title">What the data actually shows</div>
+              <div class="card-meta">next-morning resting heart rate</div>
+            </div>
+            <div class="corr-grid">
+              <div class="corr-box">
+                <div class="corr-label">On-time nights</div>
+                <div class="corr-value" style="color:var(--green)" id="corr-best-rhr">—</div>
+                <div class="corr-sub">avg RHR · <span id="corr-best-n"></span> nights</div>
+                <div class="corr-sub" style="margin-top:5px;font-size:10px">Slept near usual time + 7–9h</div>
+              </div>
+              <div class="corr-box">
+                <div class="corr-label">Off-schedule nights</div>
+                <div class="corr-value" style="color:var(--red)" id="corr-rough-rhr">—</div>
+                <div class="corr-sub">avg RHR · <span id="corr-rough-n"></span> nights</div>
+                <div class="corr-sub" style="margin-top:5px;font-size:10px">Late bedtime or under 6h</div>
+              </div>
+              <div class="corr-box delta">
+                <div class="corr-label">The difference</div>
+                <div class="corr-delta-value" id="corr-delta">—</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px">bpm higher the next morning</div>
+              </div>
+            </div>
+            <div class="corr-insight" id="corr-insight">Loading…</div>
+          </div>
         </div>
-        <div class="clock-panel-sub">Hover any arc or dot for details</div>
-      </div>
-      <div class="clock-panel">
-        <div class="clock-panel-label">Your ideal schedule <span style="font-weight:400;color:var(--faint);font-size:9px;text-transform:none;letter-spacing:0">· built from your data</span></div>
-        <canvas id="blueprint-canvas" class="clock" style="cursor:default"></canvas>
-        <div class="bp-legend" id="bp-legend" style="margin-top:14px"></div>
-      </div>
-      <div class="clock-side">
-        <div class="legend-title">Sleep duration</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#D64B39"></div>&lt; 5 hrs</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#C4800C"></div>5 – 6 hrs</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#C89B0E"></div>6 – 7 hrs</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#3E9B32"></div>7 – 8 hrs (optimal)</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#2A7DC8"></div>8 – 9 hrs</div>
-        <div class="legend-row"><div class="legend-swatch" style="background:#7252D8"></div>&gt; 9 hrs</div>
-        <div class="legend-row" style="margin-top:8px"><div class="legend-dot" style="background:#C89B0E"></div>Workout session</div>
       </div>
     </div>
-    <div class="insight-box clock-insight-row" id="clock-insight">Loading…</div>
   </div>
 
-  <div class="card card-2">
-    <div class="card-header"><div class="card-title">How consistent are you?</div></div>
-    <div class="c-stack" id="c-stack"></div>
-  </div>
-
-  <div class="card card-4">
-    <div class="card-header">
-      <div class="card-title">What the data actually shows</div>
-      <div class="card-meta">next-morning resting heart rate</div>
+  <!-- Your Training -->
+  <div class="acc-section" id="acc-training">
+    <div class="acc-header" onclick="toggleAcc('acc-training')">
+      <span class="acc-title">Your Training</span>
+      <div class="acc-chevron"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     </div>
-    <div class="corr-grid">
-      <div class="corr-box">
-        <div class="corr-label">On-time nights</div>
-        <div class="corr-value" style="color:var(--green)" id="corr-best-rhr">—</div>
-        <div class="corr-sub">avg RHR · <span id="corr-best-n"></span> nights</div>
-        <div class="corr-sub" style="margin-top:5px;font-size:10px">Slept near usual time + 7–9h</div>
-      </div>
-      <div class="corr-box">
-        <div class="corr-label">Off-schedule nights</div>
-        <div class="corr-value" style="color:var(--red)" id="corr-rough-rhr">—</div>
-        <div class="corr-sub">avg RHR · <span id="corr-rough-n"></span> nights</div>
-        <div class="corr-sub" style="margin-top:5px;font-size:10px">Late bedtime or under 6h</div>
-      </div>
-      <div class="corr-box delta">
-        <div class="corr-label">The difference</div>
-        <div class="corr-delta-value" id="corr-delta">—</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px">bpm higher the next morning</div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="acc-grid">
+          <div class="acc-card acc-card-3">
+            <div class="card-header">
+              <div class="card-title">Resting Heart Rate</div>
+              <div class="card-meta" id="b-rhr"></div>
+            </div>
+            <div class="chart-wrap chart-h200"><canvas id="chart-rhr"></canvas></div>
+          </div>
+          <div class="acc-card acc-card-3">
+            <div class="card-header">
+              <div class="card-title">When you work out</div>
+              <div class="card-meta" id="b-workouts"></div>
+            </div>
+            <div class="chart-wrap chart-h200"><canvas id="chart-workout-timing"></canvas></div>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="corr-insight" id="corr-insight">Loading…</div>
   </div>
 
-  <div class="card card-full">
-    <div class="card-header">
-      <div class="card-title">Nightly Sleep Duration</div>
-      <div class="card-meta" id="b-sleep"></div>
+  <!-- Your History -->
+  <div class="acc-section" id="acc-history">
+    <div class="acc-header" onclick="toggleAcc('acc-history')">
+      <span class="acc-title">Your History</span>
+      <div class="acc-chevron"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     </div>
-    <div class="chart-wrap chart-h220"><canvas id="chart-sleep"></canvas></div>
-  </div>
-
-  <div class="card card-3">
-    <div class="card-header">
-      <div class="card-title">Resting Heart Rate</div>
-      <div class="card-meta" id="b-rhr"></div>
+    <div class="acc-body">
+      <div class="acc-inner">
+        <div class="stats-row">
+          <div class="stat" id="stat-0">
+            <div class="stat-label">You typically fall asleep at</div>
+            <div><span class="stat-value" id="s-onset">—</span></div>
+            <div class="stat-sub">median onset · <span id="s-sleep-sub"></span></div>
+          </div>
+          <div class="stat" id="stat-1">
+            <div class="stat-label">And wake up around</div>
+            <div><span class="stat-value" id="s-wake">—</span></div>
+            <div class="stat-sub">avg wake time</div>
+          </div>
+          <div class="stat" id="stat-2">
+            <div class="stat-label">Getting on average</div>
+            <div><span class="stat-value" id="s-sleep">—</span><span class="stat-unit">hrs</span></div>
+            <div class="stat-sub">per night</div>
+          </div>
+          <div class="stat" id="stat-3">
+            <div class="stat-label">Weekend sleep-in by</div>
+            <div><span class="stat-value" id="s-jetlag">—</span><span class="stat-unit">min</span></div>
+            <div id="s-jetlag-grade"></div>
+          </div>
+        </div>
+        <div class="acc-grid">
+          <div class="acc-card acc-card-full">
+            <div class="card-header">
+              <div class="card-title">Nightly Sleep Duration</div>
+              <div class="card-meta" id="b-sleep"></div>
+            </div>
+            <div class="chart-wrap chart-h220"><canvas id="chart-sleep"></canvas></div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="chart-wrap chart-h200"><canvas id="chart-rhr"></canvas></div>
   </div>
 
-  <div class="card card-3">
-    <div class="card-header">
-      <div class="card-title">When you work out</div>
-      <div class="card-meta" id="b-workouts"></div>
-    </div>
-    <div class="chart-wrap chart-h200"><canvas id="chart-workout-timing"></canvas></div>
-  </div>
-
-</div><!-- /grid -->
+</div><!-- /acc-sections -->
 </div><!-- /screen-dash -->
 
 <!-- Tooltip -->
@@ -700,6 +905,24 @@
 </div>
 
 <script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TIMING CONFIG — edit these numbers to adjust the landing animation
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const TIMING = {
+  // Landing animation (all values in milliseconds)
+  typeSpeed:        120,   // ms per letter for "Cadence" typing
+  afterTitle:       600,   // pause after title finishes before first line appears
+  afterLine1:      1200,   // delay before "Now you can see it." fades in
+  afterLine2:      1000,   // delay before privacy note fades in
+  afterPrivacy:     700,   // delay before button fades in
+  afterButton:      500,   // delay before how-to link fades in
+
+  // Screen-to-screen fade transitions
+  fadeOut:          300,   // ms for current screen to fade out
+  fadeIn:           400,   // ms for next screen to fade in
+};
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 // ── Utils ──────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -941,6 +1164,85 @@ function setClockMode(mode){
   drawPatternClock($('clock-canvas'),clockNights,clockMeta,clockMeta?.workoutTagged,clockMode);
 }
 
+// ── Accordion ──────────────────────────────────────────────────────────────
+function toggleAcc(id) {
+  $(id).classList.toggle('open');
+}
+
+// ── Screen fade transitions ────────────────────────────────────────────────
+async function fadeToScreen(toId) {
+  const from = document.querySelector('.screen.active');
+  const to   = $(toId);
+  if (!from || !to || from === to) return;
+
+  // Fade out current screen
+  from.style.transition = `opacity ${TIMING.fadeOut}ms ease`;
+  from.style.opacity    = '0';
+  await delay(TIMING.fadeOut);
+  from.classList.remove('active');
+  from.style.transition = '';
+  from.style.opacity    = '';
+
+  // Prepare target, then fade in
+  to.style.opacity = '0';
+  to.classList.add('active');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    to.style.transition = `opacity ${TIMING.fadeIn}ms ease`;
+    to.style.opacity    = '1';
+  }));
+  await delay(TIMING.fadeIn + 20);
+  to.style.transition = '';
+  to.style.opacity    = '';
+}
+
+// ── Landing animation ─────────────────────────────────────────────────────
+async function playLandingAnimation() {
+  // Step 1: type "Cadence"
+  const titleEl = $('land-title');
+  const word    = 'Cadence';
+  for (let i = 0; i < word.length; i++) {
+    titleEl.textContent += word[i];
+    await delay(TIMING.typeSpeed);
+  }
+  await delay(TIMING.afterTitle);
+
+  // Step 2: "Your body has a rhythm."
+  $('land-line-1').style.opacity = '1';
+  await delay(TIMING.afterLine1);
+
+  // Step 3: "Now you can see it."
+  $('land-line-2').style.opacity = '1';
+  await delay(TIMING.afterLine2);
+
+  // Step 4: privacy note
+  $('land-privacy').style.opacity = '1';
+  await delay(TIMING.afterPrivacy);
+
+  // Step 5: button
+  $('land-btn').style.opacity = '1';
+  await delay(TIMING.afterButton);
+
+  // Step 6: how-to link
+  $('land-howto').style.opacity = '1';
+}
+
+// ── Landing how-to toggle ─────────────────────────────────────────────────
+let _howToOpen = false;
+function toggleLandHowTo() {
+  _howToOpen = !_howToOpen;
+  const body    = $('land-howto-body');
+  const chevron = $('land-chevron');
+  if (_howToOpen) {
+    body.style.maxHeight = body.scrollHeight + 'px';
+    body.classList.add('open');
+    chevron.style.transform = 'rotate(180deg)';
+  } else {
+    body.style.maxHeight = '0';
+    body.classList.remove('open');
+    chevron.style.transform = '';
+  }
+}
+
 // ── Hover ──────────────────────────────────────────────────────────────────
 function setupClockHover(canvasEl){
   const tip=$('clock-tip');
@@ -994,34 +1296,347 @@ function setupClockHover(canvasEl){
 
 // ── Charts ─────────────────────────────────────────────────────────────────
 const GC='#E8E4DC', TC='#ACA8A1';
+const CHART_TOOLTIP = {
+  backgroundColor:'#ffffff', titleColor:'#1A1917', bodyColor:'#6C6760',
+  borderColor:'#E8E4DC', borderWidth:1, padding:10, cornerRadius:8,
+};
 function timeLine(id,pts,color,yLabel){
-  new Chart($(id),{type:'line',data:{datasets:[{data:pts,borderColor:color,backgroundColor:color+'18',borderWidth:2,pointRadius:pts.length>80?0:3,pointHoverRadius:4,fill:true,tension:0.3}]},
-  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y.toFixed(1)} ${yLabel}`}}},
+  new Chart($(id),{type:'line',data:{datasets:[{data:pts,borderColor:color+'80',backgroundColor:color+'12',borderWidth:2,pointRadius:pts.length>80?0:3,pointHoverRadius:4,fill:true,tension:0.3}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...CHART_TOOLTIP,callbacks:{label:c=>`${c.parsed.y.toFixed(1)} ${yLabel}`}}},
   scales:{x:{type:'time',time:{unit:'month',tooltipFormat:'MMM d, yyyy'},grid:{color:GC},ticks:{color:TC,maxTicksLimit:8}},y:{grid:{color:GC},ticks:{color:TC},title:{display:true,text:yLabel,color:TC}}}}});
+}
+
+// ─── Apple Health Parser ──────────────────────────────────────────────────
+// Extracts sleep, heart rate, and workout data from Apple Health exports.
+// Handles both .zip (apple_health_export/export.xml) and raw .xml files.
+// Uses a fast string-scan approach instead of DOMParser to handle large files
+// without crashing — Apple Health exports can exceed 500 MB uncompressed.
+
+function _getAttr(tag, name) {
+  // Fastest possible attribute extractor: pure string ops, zero regex.
+  const needle = ` ${name}="`;
+  const i = tag.indexOf(needle);
+  if (i === -1) return null;
+  const vs = i + needle.length;
+  const ve = tag.indexOf('"', vs);
+  return ve === -1 ? null : tag.slice(vs, ve);
+}
+
+function* _iterElems(xml, tagName) {
+  // Yield each <tagName .../> element string, scanning with indexOf.
+  // This is O(n) and avoids regex backtracking on huge files.
+  const open = `<${tagName} `;
+  let pos = 0;
+  while (true) {
+    const s = xml.indexOf(open, pos);
+    if (s === -1) break;
+    const e = xml.indexOf('/>', s);
+    if (e === -1) break;
+    yield xml.slice(s, e + 2);
+    pos = e + 2;
+  }
+}
+
+function _parseAHDate(str) {
+  // Apple Health date format: "2025-06-06 00:15:54 -0400"
+  // Convert to ISO 8601: "2025-06-06T00:15:54-04:00"
+  if (!str) return null;
+  const t = str.replace(' ', 'T'); // first space → T
+  const spIdx = t.lastIndexOf(' ');
+  if (spIdx !== -1) {
+    const tz  = t.slice(spIdx + 1);                           // "-0400"
+    const tz8 = tz.slice(0, 3) + ':' + tz.slice(3);          // "-04:00"
+    return new Date(t.slice(0, spIdx) + tz8);
+  }
+  return new Date(t);
+}
+
+function _median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function _stddev(arr) {
+  if (arr.length < 2) return 0;
+  const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
+  return Math.sqrt(arr.map(v => (v - mean) ** 2).reduce((s, v) => s + v, 0) / arr.length);
+}
+
+function _fmtAHDate(d) {
+  // Format a Date like Apple Health: "2025-06-06 00:15:54 -0400"
+  const pad = n => String(n).padStart(2, '0');
+  const off  = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const oh   = pad(Math.floor(Math.abs(off) / 60));
+  const om   = pad(Math.abs(off) % 60);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ` +
+         `${sign}${oh}${om}`;
+}
+
+function _buildNight(group) {
+  const onset   = group[0].start;
+  const wake    = group[group.length - 1].end;
+  const sleepMs = group.reduce((s, g) => s + (g.end - g.start), 0);
+  if (sleepMs < 30 * 60 * 1000) return null; // under 30 min — ignore
+
+  const onsetHour = onset.getHours() + onset.getMinutes() / 60;
+  const wakeHour  = wake.getHours()  + wake.getMinutes()  / 60;
+  const onsetNorm = onsetHour < 12 ? onsetHour + 24 : onsetHour; // normalize: 1am → 25
+
+  return {
+    onsetStr:    _fmtAHDate(onset),
+    wakeStr:     _fmtAHDate(wake),
+    wakeDate:    wake.toISOString().slice(0, 10),
+    onsetHour:   parseFloat(onsetHour.toFixed(4)),
+    wakeHour:    parseFloat(wakeHour.toFixed(4)),
+    onsetNorm:   parseFloat(onsetNorm.toFixed(4)),
+    sleepHrs:    parseFloat((sleepMs / 3600000).toFixed(3)),
+    dayOfWeek:   wake.getDay(),   // 0 = Sunday
+    deviationMin: 0,              // filled after median is known
+    rhr:         null,            // filled from HR data
+    _onsetMs:    onset.getTime(),
+    _wakeMs:     wake.getTime(),
+  };
+}
+
+function _computeMeta(nights, hrReadings, workoutRaw) {
+  const onsetNorms = nights.map(n => n.onsetNorm);
+  const wakeHours  = nights.map(n => n.wakeHour);
+  const sleepHrArr = nights.map(n => n.sleepHrs);
+
+  const medianOnset = _median(onsetNorms);
+  const avgWakeHour = wakeHours.reduce((s, v) => s + v, 0) / wakeHours.length;
+  const avgSleepHrs = sleepHrArr.reduce((s, v) => s + v, 0) / sleepHrArr.length;
+  const onsetSdMin  = _stddev(onsetNorms) * 60;
+  const wakeSdMin   = _stddev(wakeHours)  * 60;
+
+  // Social jetlag: |weekday median onset − weekend median onset| × 60
+  const wdO = nights.filter(n => n.dayOfWeek >= 1 && n.dayOfWeek <= 5).map(n => n.onsetNorm);
+  const weO = nights.filter(n => n.dayOfWeek === 0 || n.dayOfWeek === 6).map(n => n.onsetNorm);
+  const jetlagMin = (wdO.length > 0 && weO.length > 0)
+    ? Math.abs(_median(weO) - _median(wdO)) * 60 : 0;
+
+  // RHR split: consistent nights (close to median, full sleep) vs rough nights
+  const withRhr    = nights.filter(n => n.rhr !== null);
+  const consistent = withRhr.filter(n => Math.abs(n.deviationMin) < 30 && n.sleepHrs >= 7);
+  const rough      = withRhr.filter(n => Math.abs(n.deviationMin) > 60 || n.sleepHrs < 6);
+  const avgRhrArr  = arr => arr.reduce((s, n) => s + n.rhr, 0) / arr.length;
+
+  const bestRhr  = consistent.length >= 3 ? parseFloat(avgRhrArr(consistent).toFixed(2)) : null;
+  const roughRhr = rough.length >= 3      ? parseFloat(avgRhrArr(rough).toFixed(2))      : null;
+  const deltaRhr = (bestRhr && roughRhr)  ? parseFloat((roughRhr - bestRhr).toFixed(2))  : null;
+
+  // Workout windows — tag each workout with the next morning's RHR
+  const rhrByDate = {};
+  for (const n of nights) {
+    if (n.rhr !== null) rhrByDate[n.wakeDate] = n.rhr;
+  }
+
+  const workoutTagged = [];
+  for (const w of workoutRaw) {
+    const start = _parseAHDate(w.startDate);
+    if (!start) continue;
+    const hour = start.getHours() + start.getMinutes() / 60;
+    const dur  = parseFloat(w.duration) || 0;
+    const dateStr   = start.toISOString().slice(0, 10);
+    const nextDate  = new Date(start.getTime() + 86400000).toISOString().slice(0, 10);
+    const rhrNext   = rhrByDate[nextDate] ?? rhrByDate[dateStr] ?? null;
+    const nightAfter = nights.find(n => n.wakeDate === nextDate || n.wakeDate === dateStr);
+    workoutTagged.push({
+      hour:     parseFloat(hour.toFixed(1)),
+      type:     (w.workoutActivityType || '').replace('HKWorkoutActivityType', ''),
+      dur:      parseFloat(dur.toFixed(1)),
+      rhrNext,
+      sleepHrs: nightAfter?.sleepHrs ?? null,
+      date:     dateStr,
+    });
+  }
+
+  const WIN_DEFS = [
+    { label: 'Morning',   startHour: 6,  endHour: 11 },
+    { label: 'Midday',    startHour: 11, endHour: 14 },
+    { label: 'Afternoon', startHour: 14, endHour: 17 },
+    { label: 'Evening',   startHour: 17, endHour: 22 },
+  ];
+  const workoutWindows = [];
+  for (const win of WIN_DEFS) {
+    const tagged     = workoutTagged.filter(w => w.hour >= win.startHour && w.hour < win.endHour);
+    const controlled = tagged.filter(w => w.rhrNext !== null && (w.sleepHrs ?? 0) >= 6);
+    if (tagged.length < 3) continue;
+    const withRhrW   = tagged.filter(w => w.rhrNext !== null);
+    const avgRhrVal  = withRhrW.length  > 0 ? withRhrW.reduce((s, w) => s + w.rhrNext, 0) / withRhrW.length   : null;
+    const avgRhrCtrl = controlled.length > 0 ? controlled.reduce((s, w) => s + w.rhrNext, 0) / controlled.length : null;
+    workoutWindows.push({
+      label:            win.label,
+      startHour:        win.startHour,
+      endHour:          win.endHour,
+      n:                tagged.length,
+      nControlled:      controlled.length,
+      avgRhr:           avgRhrVal  !== null ? parseFloat(avgRhrVal.toFixed(2))  : null,
+      avgRhrControlled: avgRhrCtrl !== null ? parseFloat(avgRhrCtrl.toFixed(2)) : null,
+    });
+  }
+  workoutWindows.sort((a, b) => (a.avgRhrControlled ?? a.avgRhr ?? 999) - (b.avgRhrControlled ?? b.avgRhr ?? 999));
+  workoutWindows.forEach((w, i) => { w.rank = i; });
+
+  return {
+    totalNights:   nights.length,
+    medianOnset,
+    avgSleepHrs:   parseFloat(avgSleepHrs.toFixed(3)),
+    onsetSdMin:    parseFloat(onsetSdMin.toFixed(2)),
+    wakeSdMin:     parseFloat(wakeSdMin.toFixed(2)),
+    avgWakeHour:   parseFloat(avgWakeHour.toFixed(4)),
+    jetlagMin:     parseFloat(jetlagMin.toFixed(2)),
+    bestRhr,
+    roughRhr,
+    bestN:         consistent.length,
+    roughN:        rough.length,
+    deltaRhr,
+    workoutWindows: workoutWindows.length > 0 ? workoutWindows : null,
+    workoutTagged:  workoutTagged.length  > 0 ? workoutTagged  : null,
+  };
+}
+
+async function parseAppleHealthFile(file) {
+  if (!file) throw new Error('No file selected.');
+
+  // ── Read XML text ───────────────────────────────────────────────────
+  let xmlText;
+  if (file.name.toLowerCase().endsWith('.zip')) {
+    if (!window.JSZip) throw new Error('ZIP support failed to load. Try refreshing the page.');
+    const zip = await window.JSZip.loadAsync(file);
+    let entry = zip.file('apple_health_export/export.xml');
+    if (!entry) {
+      const matches = zip.file(/export\.xml$/i);
+      entry = matches[0] || null;
+    }
+    if (!entry) throw new Error('No export.xml found inside the zip. Make sure you exported "All Health Data" from the iPhone Health app.');
+    xmlText = await entry.async('text');
+  } else {
+    xmlText = await file.text();
+  }
+
+  if (!xmlText || xmlText.length < 500)
+    throw new Error('The file appears to be empty or corrupted.');
+
+  // ── Extract records ─────────────────────────────────────────────────
+  const SLEEP_TYPE = 'HKCategoryTypeIdentifierSleepAnalysis';
+  const HR_TYPE    = 'HKQuantityTypeIdentifierHeartRate';
+
+  const sleepSegs  = [];
+  const hrReadings = [];
+
+  for (const tag of _iterElems(xmlText, 'Record')) {
+    const type = _getAttr(tag, 'type');
+    if (type === SLEEP_TYPE) {
+      const val = _getAttr(tag, 'value') || '';
+      // Accept any "Asleep" state; reject InBed, Awake, and empty
+      if (val.includes('Asleep') && !val.includes('Awake')) {
+        const start = _parseAHDate(_getAttr(tag, 'startDate'));
+        const end   = _parseAHDate(_getAttr(tag, 'endDate'));
+        if (start && end && end > start) sleepSegs.push({ start, end });
+      }
+    } else if (type === HR_TYPE) {
+      const val = parseFloat(_getAttr(tag, 'value'));
+      const ts  = _parseAHDate(_getAttr(tag, 'startDate'));
+      if (ts && !isNaN(val) && val > 20 && val < 250) {
+        hrReadings.push({
+          startDate:  _getAttr(tag, 'startDate'),
+          endDate:    _getAttr(tag, 'endDate'),
+          value:      String(Math.round(val)),
+          unit:       _getAttr(tag, 'unit') || 'count/min',
+          sourceName: _getAttr(tag, 'sourceName'),
+          _ts:        ts.getTime(),
+        });
+      }
+    }
+  }
+
+  const workoutRaw = [];
+  for (const tag of _iterElems(xmlText, 'Workout')) {
+    workoutRaw.push({
+      startDate:             _getAttr(tag, 'startDate'),
+      endDate:               _getAttr(tag, 'endDate'),
+      workoutActivityType:   _getAttr(tag, 'workoutActivityType'),
+      duration:              _getAttr(tag, 'duration'),
+      durationUnit:          _getAttr(tag, 'durationUnit') || 'min',
+      totalEnergyBurned:     _getAttr(tag, 'totalEnergyBurned'),
+      totalEnergyBurnedUnit: _getAttr(tag, 'totalEnergyBurnedUnit'),
+      totalDistance:         _getAttr(tag, 'totalDistance'),
+      totalDistanceUnit:     _getAttr(tag, 'totalDistanceUnit'),
+      sourceName:            _getAttr(tag, 'sourceName'),
+    });
+  }
+
+  // ── Group sleep segments into nights ────────────────────────────────
+  if (sleepSegs.length === 0)
+    throw new Error('No sleep tracking data found. Make sure your Apple Watch or another sleep tracker was synced to the Health app before exporting.');
+
+  sleepSegs.sort((a, b) => a.start - b.start);
+
+  const GAP_MS = 4 * 60 * 60 * 1000; // 4-hour gap → new night
+  const nights = [];
+  let group = [sleepSegs[0]];
+
+  for (let i = 1; i < sleepSegs.length; i++) {
+    const gap = sleepSegs[i].start - group[group.length - 1].end;
+    if (gap < GAP_MS) {
+      group.push(sleepSegs[i]);
+    } else {
+      const n = _buildNight(group);
+      if (n) nights.push(n);
+      group = [sleepSegs[i]];
+    }
+  }
+  const lastN = _buildNight(group);
+  if (lastN) nights.push(lastN);
+
+  if (nights.length === 0)
+    throw new Error('Not enough sleep data found. Cadence needs at least one full night (30+ minutes) of sleep tracking.');
+
+  nights.sort((a, b) => a._onsetMs - b._onsetMs);
+
+  // ── Attach morning RHR to each night ────────────────────────────────
+  hrReadings.sort((a, b) => a._ts - b._ts);
+  for (const night of nights) {
+    const window90 = hrReadings.filter(h => h._ts >= night._wakeMs && h._ts <= night._wakeMs + 5400000);
+    if (window90.length > 0) {
+      const vals = window90.map(h => parseFloat(h.value));
+      night.rhr  = parseFloat((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1));
+    }
+  }
+
+  // ── Compute deviations from median ──────────────────────────────────
+  const medianOnset = _median(nights.map(n => n.onsetNorm));
+  for (const night of nights) {
+    night.deviationMin = parseFloat(((night.onsetNorm - medianOnset) * 60).toFixed(1));
+  }
+
+  const meta = _computeMeta(nights, hrReadings, workoutRaw);
+
+  // Strip internal timestamp fields before returning
+  nights.forEach(n => { delete n._onsetMs; delete n._wakeMs; });
+  hrReadings.forEach(h => { delete h._ts; });
+
+  return { meta, nights, rhrRaw: hrReadings, workoutRaw };
 }
 
 // ── Screen transitions ─────────────────────────────────────────────────────
 async function startAnalysis() {
-  // Swap screens
-  $('screen-import').classList.remove('active');
-  $('screen-analysis').classList.add('active');
+  // Guard: if no file is staged this session something went wrong
+  if (!window._pendingFile) {
+    showDropError("No file selected. Please upload your Apple Health export first.");
+    return;
+  }
 
-  // Load data in background while animation runs
-  let meta, nights, rhrRaw, workoutRaw;
-  const dataPromise = Promise.all([
-    fetch('data/nights.json').then(r=>r.json()),
-    fetch('data/resting_hr.json').then(r=>r.json()),
-    fetch('data/workouts.json').then(r=>r.json()),
-  ]).then(([nd, rhr, wo]) => {
-    meta = nd.meta; nights = nd.nights;
-    clockMeta = meta; clockNights = nights;
-    _rhrData = rhr; _workoutData = wo;
-    rhrRaw = rhr; workoutRaw = wo;
-  });
+  await fadeToScreen('screen-analysis');
 
-  // Animation sequence
   const statusEl = $('an-status');
   const factsEl  = $('an-facts');
+  factsEl.innerHTML = ''; // clear leftover facts from any previous run
 
   function addFact(html) {
     const div = document.createElement('div');
@@ -1031,10 +1646,45 @@ async function startAnalysis() {
     requestAnimationFrame(()=>requestAnimationFrame(()=>div.classList.add('in')));
   }
 
-  // Wait for data or at least 1.2s
-  await Promise.all([dataPromise, delay(1200)]);
+  // ── Parse user's file in the background ─────────────────────────────
+  statusEl.textContent = 'Reading your Health export…';
 
-  // Reveal facts staggered
+  let meta, nights, rhrRaw, workoutRaw;
+  let parseError = null;
+
+  const parsePromise = parseAppleHealthFile(window._pendingFile)
+    .then(result => {
+      ({ meta, nights, rhrRaw, workoutRaw } = result);
+      clockMeta = meta; clockNights = nights;
+      _rhrData = rhrRaw; _workoutData = workoutRaw;
+    })
+    .catch(err => { parseError = err.message || 'Could not read file.'; });
+
+  // Show the animation for at least 1.2 s while parsing
+  await Promise.all([parsePromise, delay(1200)]);
+
+  // ── Handle parse failure ─────────────────────────────────────────────
+  if (parseError) {
+    await fadeToScreen('screen-landing');
+    const le = $('land-error');
+    if (le) {
+      le.textContent = "We couldn't read your file. Make sure you're uploading the Apple Health export zip or XML file.";
+      setTimeout(() => { le.textContent = ''; }, 6000);
+    }
+    console.warn('[Cadence] Parse failed:', parseError);
+    window._pendingFile = null;
+    return;
+  }
+
+  // ── Console diagnostics ──────────────────────────────────────────────
+  const profile = getProfile();
+  console.log(`[Cadence] Parsing: user file (${window._pendingFile.name})`);
+  console.log(`[Cadence] Nights found: ${meta.totalNights}`);
+  console.log(`[Cadence] Workouts found: ${workoutRaw.length}`);
+  console.log(`[Cadence] Using profile: ${profile?.goal || 'none'}`);
+  console.log(`[Cadence] Calling Railway: yes`);
+
+  // ── Reveal facts staggered ───────────────────────────────────────────
   const facts = [
     `We found <strong>${meta.totalNights} nights</strong> of health data`,
     `You typically fall asleep at <strong>${fmtHour(meta.medianOnset%24)}</strong>`,
@@ -1059,16 +1709,16 @@ async function startAnalysis() {
 
   await delay(1400);
 
-  // Reveal score
+  // ── Reveal score ─────────────────────────────────────────────────────
   statusEl.style.opacity = '0';
   const score = rhythmScore(meta);
   const rm    = rhythmMeta(score);
-  const circumference = 2*Math.PI*42;
-  const dash  = (score/100)*circumference;
+  const circumference = 2 * Math.PI * 42;
+  const dash  = (score / 100) * circumference;
 
   const arc = $('an-score-arc');
   arc.style.stroke          = rm.color;
-  arc.style.strokeDasharray = `0 ${circumference}`; // start at zero via inline style
+  arc.style.strokeDasharray = `0 ${circumference}`;
   $('an-score-num').style.color = rm.color;
   $('an-score-tag').textContent = rm.label;
   $('an-score-tag').style.color = rm.color;
@@ -1077,30 +1727,28 @@ async function startAnalysis() {
   const scoreEl = $('an-score');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     scoreEl.classList.add('in');
-    arc.style.strokeDasharray = `${dash} ${circumference}`; // animate to score
+    arc.style.strokeDasharray = `${dash} ${circumference}`;
   }));
 
   // Count up
-  let cur=0; const step=score/45;
-  const timer=setInterval(()=>{
-    cur=Math.min(score,Math.round(cur+step));
-    $('an-score-num').textContent=cur;
-    if(cur>=score) clearInterval(timer);
-  },25);
+  let cur = 0; const step = score / 45;
+  const timer = setInterval(() => {
+    cur = Math.min(score, Math.round(cur + step));
+    $('an-score-num').textContent = cur;
+    if (cur >= score) clearInterval(timer);
+  }, 25);
 
   await delay(1600);
 
-  // CTA
-  const btn=$('an-cta-btn');
+  const btn = $('an-cta-btn');
   requestAnimationFrame(()=>requestAnimationFrame(()=>btn.classList.add('in')));
 
-  // Stash data for dashboard
+  // Stash for dashboard
   window._dashData = { meta, nights, rhrRaw, workoutRaw };
 }
 
-function showDashboard() {
-  $('screen-analysis').classList.remove('active');
-  $('screen-dash').classList.add('active');
+async function showDashboard() {
+  await fadeToScreen('screen-dash');
   renderDashboard(window._dashData);
 }
 
@@ -1115,29 +1763,36 @@ function validateFile(file) {
 }
 
 function showDropError(msg) {
-  const dz = $('drop-zone'), err = $('drop-error');
-  dz.classList.add('error');
-  err.textContent = msg;
-  err.style.display = 'block';
-  setTimeout(() => { dz.classList.remove('error'); }, 400);
-  setTimeout(() => { err.style.display = 'none'; }, 4000);
+  // Show on landing screen
+  const le = $('land-error');
+  if (le) {
+    le.textContent = msg;
+    setTimeout(() => { le.textContent = ''; }, 4000);
+  }
 }
 
-const dz = $('drop-zone');
-dz.addEventListener('dragover', e=>{e.preventDefault(); dz.classList.add('drag-over'); $('drop-error').style.display='none';});
-dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
-dz.addEventListener('drop', e=>{
-  e.preventDefault(); dz.classList.remove('drag-over');
+// ── Landing drag-and-drop ─────────────────────────────────────────────────
+const landingInner = $('landing-inner');
+landingInner.addEventListener('dragover', e => {
+  e.preventDefault();
+  landingInner.style.opacity = '0.85';
+});
+landingInner.addEventListener('dragleave', () => {
+  landingInner.style.opacity = '';
+});
+landingInner.addEventListener('drop', e => {
+  e.preventDefault();
+  landingInner.style.opacity = '';
   const file = e.dataTransfer.files[0];
   const result = validateFile(file);
-  if (result === 'ok' || !file) { handleFileReady(); return; }
+  if (result === 'ok' || !file) { window._pendingFile = file; handleFileReady(); return; }
   showDropError(result);
 });
 
 $('file-input').addEventListener('change', e => {
   const file = e.target.files[0];
   const result = validateFile(file);
-  if (result === 'ok' || !file) { handleFileReady(); return; }
+  if (result === 'ok' || !file) { window._pendingFile = file; handleFileReady(); return; }
   e.target.value = '';
   showDropError(result);
 });
@@ -1153,16 +1808,11 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   setTimeout(()=>$('score-arc').setAttribute('stroke-dasharray',`${dash} ${circumference}`),80);
   $('rhythm-score').textContent=score; $('rhythm-score').style.color=rm.color;
   $('rhythm-tag').textContent=rm.label;
+  $('hero-headline').textContent=rm.headline;
 
   const bestW=meta.workoutWindows?.[0];
-  $('hero-headline').textContent=rm.headline;
-  $('hero-text').innerHTML=`You typically fall asleep around <strong>${fmtHour(meta.medianOnset%24)}</strong> and wake at <strong>${fmtHour(meta.avgWakeHour)}</strong>, getting <strong>${meta.avgSleepHrs.toFixed(1)} hrs</strong> on average over ${meta.totalNights} nights. ${rm.hint}${meta.deltaRhr?` Your data shows a clear signal: consistent nights lead to a <strong>${meta.deltaRhr} bpm lower</strong> resting heart rate the next morning.`:''}`;
-
   const windDown=fmtHour((meta.medianOnset-1.5)%24);
   const targetBed=fmtHour((meta.medianOnset+0.5)%24);
-  $('cta-content').innerHTML=`
-    <div class="cta-row"><div class="cta-label-sm">Asleep by</div><div class="cta-time">${targetBed}</div></div>
-    <div class="cta-row" style="margin-top:8px"><div class="cta-label-sm">Wind down at</div><div class="cta-time">${windDown}</div></div>`;
 
   // ── Stats bar (staggered fade-in) ──
   const statData=[
@@ -1236,7 +1886,7 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   new Chart($('chart-workout-timing'),{type:'bar',
     data:{labels:wrkLabels,datasets:[{data:hourCounts,backgroundColor:windowColors,borderColor:windowColors.map(c=>c.slice(0,7)+'cc'),borderWidth:1,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y} sessions`}}},
+      plugins:{legend:{display:false},tooltip:{...CHART_TOOLTIP,callbacks:{label:c=>`${c.parsed.y} sessions`}}},
       scales:{x:{grid:{color:GC},ticks:{color:TC}},y:{grid:{color:GC},ticks:{color:TC}}}}});
 
   // ── Cadence AI narration ──────────────────────────────────────────────────
@@ -1254,14 +1904,16 @@ const CADENCE_API = window.CADENCE_API_URL || 'https://cadence-backend-productio
 const KEY_PROFILE   = 'cadence_profile';
 const KEY_CHECKIN   = 'cadence_checkin_date';
 const KEY_CONTEXT   = 'cadence_context_log';  // rolling array of daily summaries
+const KEY_ONBOARDED = 'cadence_onboarded';    // set to 'true' after first survey
+const KEY_NAME      = 'cadence_name';         // user's preferred name for Claude
 
 // ── Survey & check-in state ───────────────────────────────────────────────
 let _pendingFile = null; // holds the file drop event while modals are open
 
 // Called by the file drop/select handlers instead of startAnalysis() directly
 function handleFileReady() {
-  const profile = getProfile();
-  if (!profile) {
+  if (!localStorage.getItem(KEY_ONBOARDED)) {
+    // First-time user: always go through the full survey
     showModal('modal-onboarding');
   } else if (!checkedInToday()) {
     showModal('modal-checkin');
@@ -1308,7 +1960,15 @@ function submitSurvey() {
     return;
   }
   saveProfile(profile);
+  localStorage.setItem(KEY_ONBOARDED, 'true');
   hideModal('modal-onboarding');
+
+  // If opened from settings: just update preferences, stay on dashboard
+  if (_surveyFromSettings) {
+    _surveyFromSettings = false;
+    return;
+  }
+
   if (!checkedInToday()) {
     showModal('modal-checkin');
   } else {
@@ -1327,13 +1987,15 @@ function submitCheckin() {
   appendContext(`${entry.date}: sleep_quality=${entry.sleep_quality||'?'}, alcohol_last_night=${entry.alcohol||'?'}, stress=${entry.stress||'?'}`);
   localStorage.setItem(KEY_CHECKIN, today());
   hideModal('modal-checkin');
-  startAnalysis();
+  // Only run analysis if the user has already selected their file this session.
+  // If no file yet (returning user opened app fresh), wait for file upload.
+  if (window._pendingFile) startAnalysis();
 }
 
 function skipCheckin() {
   localStorage.setItem(KEY_CHECKIN, today());
   hideModal('modal-checkin');
-  startAnalysis();
+  if (window._pendingFile) startAnalysis();
 }
 
 // ── Context accumulator ───────────────────────────────────────────────────
@@ -1385,6 +2047,11 @@ async function fetchCadenceInsight(meta, score) {
   // Save this session to the rolling context log before sending
   saveSessionSummary(score, meta);
 
+  // Show loading state
+  $('cadence-loading').style.display = 'flex';
+  $('cadence-insight-body').style.display = 'none';
+  $('cadence-tonight-section').style.display = 'none';
+
   const payload = {
     readiness_score:          score,
     avg_bedtime:              fmtHour(meta.medianOnset % 24),
@@ -1396,16 +2063,17 @@ async function fetchCadenceInsight(meta, score) {
     nights_analyzed:          meta.totalNights,
     user_profile:             getProfile() || undefined,
     context_block:            buildContextBlock() || undefined,
+    user_name:                localStorage.getItem(KEY_NAME) || undefined,
   };
 
   try {
-    const res  = await fetch(`${CADENCE_API}/narrate`, {
+    const res = await fetch(`${CADENCE_API}/narrate`, {
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Cadence-Key': 'cad-f7x2-9kqm-3wpl',
       },
-      body:    JSON.stringify(payload),
+      body: JSON.stringify(payload),
     });
 
     // Parse error detail from backend before throwing
@@ -1417,30 +2085,123 @@ async function fetchCadenceInsight(meta, score) {
 
     const data = await res.json();
 
+    // Hide loading, reveal narration
+    $('cadence-loading').style.display = 'none';
     $('cadence-insight-body').textContent = data.narration;
+    $('cadence-insight-body').style.display = '';
 
-    // Build the footer safely — no innerHTML with user-influenced data
-    const footerEl = $('cadence-tonight');
-    footerEl.textContent = '';
+    // Show tonight's target section
     if (data.tonight_target) {
-      footerEl.appendChild(document.createTextNode("Tonight's target bedtime: "));
-      const strong = document.createElement('strong');
-      strong.textContent = data.tonight_target;
-      footerEl.appendChild(strong);
+      $('cadence-tonight-time').textContent = data.tonight_target;
+      $('cadence-tonight-section').style.display = '';
     }
+
+    // Low-confidence warning
     if (data.confidence === 'low') {
-      const badge = document.createElement('span');
-      badge.style.cssText = 'font-size:11px;color:var(--amber);margin-left:12px';
-      badge.textContent = '\u26A0 Low confidence \u2014 upload more nights for better accuracy';
-      footerEl.appendChild(badge);
+      $('cadence-tonight-conf').style.display = '';
     }
 
   } catch (err) {
+    $('cadence-loading').style.display = 'none';
     $('cadence-insight-body').textContent = err.message || 'Could not load insight. Try again.';
-    $('cadence-tonight').textContent = '';
+    $('cadence-insight-body').style.display = '';
     console.error('Cadence API error:', err);
   }
 }
+
+// ── Settings panel ────────────────────────────────────────────────────────
+function openSettings() {
+  $('sp-name').value = localStorage.getItem(KEY_NAME) || '';
+  $('settings-panel').classList.add('open');
+  $('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+  $('settings-panel').classList.remove('open');
+  $('settings-overlay').classList.remove('open');
+}
+
+function saveName(val) {
+  localStorage.setItem(KEY_NAME, val.trim());
+}
+
+let _surveyFromSettings = false;
+
+function reopenSurveyFromSettings() {
+  closeSettings();
+  _surveyFromSettings = true;
+  // Pre-select existing profile chips so user sees their current answers
+  const profile = getProfile();
+  if (profile) {
+    const chipMap = {
+      goal: 's-goal', lifestyle: 's-lifestyle', wake_constraint: 's-wake',
+      caffeine: 's-caffeine', alcohol: 's-alcohol', training_style: 's-training',
+    };
+    for (const [key, groupId] of Object.entries(chipMap)) {
+      if (!profile[key]) continue;
+      document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove('selected'));
+      const chip = document.querySelector(`#${groupId} [data-val="${profile[key]}"]`);
+      if (chip) chip.classList.add('selected');
+    }
+  }
+  showModal('modal-onboarding');
+}
+
+function importNewDataFromSettings() {
+  closeSettings();
+  $('file-input').click();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+function boot() {
+  if (localStorage.getItem(KEY_ONBOARDED)) {
+    // Returning user: reveal landing instantly (no animation), show check-in if needed
+    $('land-title').textContent = 'Cadence';
+    ['land-line-1', 'land-line-2', 'land-privacy', 'land-btn', 'land-howto'].forEach(id => {
+      $(id).style.transition = 'none';
+      $(id).style.opacity = '1';
+    });
+    if (!checkedInToday()) {
+      showModal('modal-checkin');
+    }
+  } else {
+    // First-time user: play the full typed animation
+    playLandingAnimation();
+  }
+}
+boot();
 </script>
+
+<!-- ═══════════════════════ SETTINGS PANEL ═══════════════════════ -->
+<div id="settings-overlay" class="settings-overlay" onclick="closeSettings()"></div>
+<div id="settings-panel" class="settings-panel">
+  <div class="sp-header">
+    <span class="sp-title">Settings</span>
+    <button class="sp-close" onclick="closeSettings()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="sp-section">
+    <div class="sp-section-label">Your Profile</div>
+    <label class="sp-label" for="sp-name">What should Cadence call you?</label>
+    <input type="text" class="sp-input" id="sp-name" placeholder="Your name"
+           oninput="saveName(this.value)" autocomplete="off">
+  </div>
+
+  <div class="sp-section">
+    <div class="sp-section-label">Your Preferences</div>
+    <button class="sp-btn" onclick="reopenSurveyFromSettings()">Update your lifestyle answers</button>
+  </div>
+
+  <div class="sp-section">
+    <div class="sp-section-label">Your Data</div>
+    <button class="sp-btn" onclick="importNewDataFromSettings()">Import new Apple Health export</button>
+    <p class="sp-small">Your data never leaves this device.</p>
+  </div>
+</div>
+
 </body>
 </html>
