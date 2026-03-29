@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -27,6 +28,41 @@
   .screen { display: none; }
   .screen.active { display: flex; flex-direction: column; }
   #screen-dash.active { display: block; }
+
+  /* ── AUTH SCREEN ────────────────────────────────────────────────── */
+  #screen-auth {
+    min-height: 100vh; align-items: center; justify-content: center;
+    padding: 48px 24px; gap: 0;
+  }
+  .auth-card {
+    max-width: 380px; width: 100%; background: var(--surface);
+    border-radius: 20px; border: 1px solid var(--border);
+    padding: 40px 32px; text-align: center;
+  }
+  .auth-logo { font-size: 15px; font-weight: 700; letter-spacing: -.02em; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 32px; }
+  .auth-logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); }
+  .auth-title { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 6px; }
+  .auth-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .auth-input {
+    width: 100%; padding: 12px 14px; border: 1px solid var(--border);
+    border-radius: 10px; font-size: 14px; font-family: inherit;
+    background: var(--surf2); margin-bottom: 12px; outline: none;
+    transition: border-color .2s;
+  }
+  .auth-input:focus { border-color: var(--lime); }
+  .auth-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 12px;
+    background: var(--text); color: #fff; font-size: 14px; font-weight: 600;
+    font-family: inherit; cursor: pointer; margin-top: 4px;
+    transition: opacity .2s;
+  }
+  .auth-btn:hover { opacity: .85; }
+  .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .auth-toggle { font-size: 13px; color: var(--muted); margin-top: 16px; }
+  .auth-toggle a { color: var(--blue); cursor: pointer; text-decoration: none; font-weight: 500; }
+  .auth-error { color: var(--red); font-size: 12px; margin-top: 10px; min-height: 18px; }
+  .auth-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: var(--faint); font-size: 12px; }
+  .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
   /* ── SCREEN 1: IMPORT ───────────────────────────────────────────── */
   #screen-import {
@@ -496,7 +532,23 @@
 <body>
 
 <!-- ═══════════════════════ SCREEN 1: LANDING ═══════════════════════ -->
-<div id="screen-landing" class="screen active">
+<!-- ═══════════════════════ SCREEN 0: AUTH ═══════════════════════ -->
+<div id="screen-auth" class="screen active">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="auth-logo-dot"></div>Cadence</div>
+    <h2 class="auth-title" id="auth-title">Welcome back</h2>
+    <p class="auth-sub" id="auth-sub">Sign in to see your circadian insights</p>
+    <input type="email" class="auth-input" id="auth-email" placeholder="Email address" autocomplete="email">
+    <input type="password" class="auth-input" id="auth-password" placeholder="Password" autocomplete="current-password">
+    <button class="auth-btn" id="auth-btn" onclick="handleAuth()">Sign in</button>
+    <div class="auth-toggle" id="auth-toggle">
+      Don't have an account? <a onclick="toggleAuthMode()">Sign up</a>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<div id="screen-landing" class="screen">
   <div class="landing-inner" id="landing-inner">
     <div class="land-title" id="land-title"></div>
     <div class="land-lines">
@@ -1911,7 +1963,89 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
 
 // Backend URL — override by setting window.CADENCE_API_URL before this script runs.
 // In production this points to Railway; locally use http://localhost:8000.
-const CADENCE_API = window.CADENCE_API_URL || 'https://cadence-backend-production-281e.up.railway.app';
+const CADENCE_API = window.CADENCE_API_URL || 'https://cadence-backend-production-f1eb.up.railway.app';
+
+// ── Supabase Auth ────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://epfyxqsssmcjmdkwpens.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZnl4cXNzc21jam1ka3dwZW5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDYzMjEsImV4cCI6MjA5MDEyMjMyMX0.KuM-OAM-t5mjguagfYFrdgpzKdNKnjO7eZKd_j9W7s8';
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let _authMode = 'login'; // 'login' or 'signup'
+
+function toggleAuthMode() {
+  _authMode = _authMode === 'login' ? 'signup' : 'login';
+  $('auth-title').textContent = _authMode === 'login' ? 'Welcome back' : 'Create account';
+  $('auth-sub').textContent = _authMode === 'login'
+    ? 'Sign in to see your circadian insights'
+    : 'Sign up to start tracking your rhythm';
+  $('auth-btn').textContent = _authMode === 'login' ? 'Sign in' : 'Sign up';
+  $('auth-toggle').innerHTML = _authMode === 'login'
+    ? 'Don\'t have an account? <a onclick="toggleAuthMode()">Sign up</a>'
+    : 'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>';
+  $('auth-error').textContent = '';
+}
+
+async function handleAuth() {
+  const email = $('auth-email').value.trim();
+  const password = $('auth-password').value;
+  $('auth-error').textContent = '';
+  $('auth-btn').disabled = true;
+
+  if (!email || !password) {
+    $('auth-error').textContent = 'Please enter email and password.';
+    $('auth-btn').disabled = false;
+    return;
+  }
+  if (password.length < 6) {
+    $('auth-error').textContent = 'Password must be at least 6 characters.';
+    $('auth-btn').disabled = false;
+    return;
+  }
+
+  try {
+    let result;
+    if (_authMode === 'signup') {
+      result = await _supabase.auth.signUp({ email, password });
+    } else {
+      result = await _supabase.auth.signInWithPassword({ email, password });
+    }
+
+    if (result.error) throw result.error;
+
+    if (_authMode === 'signup' && !result.data.session) {
+      $('auth-error').style.color = 'var(--green)';
+      $('auth-error').textContent = 'Check your email to confirm your account!';
+      $('auth-btn').disabled = false;
+      return;
+    }
+
+    // Authenticated — proceed to landing
+    await fadeToScreen('screen-landing');
+    boot();
+  } catch (err) {
+    $('auth-error').textContent = err.message || 'Authentication failed.';
+  }
+  $('auth-btn').disabled = false;
+}
+
+async function getAccessToken() {
+  const { data } = await _supabase.auth.getSession();
+  return data?.session?.access_token || null;
+}
+
+async function handleLogout() {
+  await _supabase.auth.signOut();
+  localStorage.removeItem(KEY_ONBOARDED);
+  closeSettings();
+  await fadeToScreen('screen-auth');
+}
+
+// Allow Enter key to submit auth form
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.querySelector('#screen-auth.active')) {
+    handleAuth();
+  }
+});
 
 // ── localStorage keys ─────────────────────────────────────────────────────
 const KEY_PROFILE   = 'cadence_profile';
@@ -2080,12 +2214,13 @@ async function fetchCadenceInsight(meta, score) {
   };
 
   try {
+    const token = await getAccessToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch(`${CADENCE_API}/narrate`, {
       method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Cadence-Key': 'cad-f7x2-9kqm-3wpl',
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
@@ -2182,7 +2317,17 @@ function boot() {
     playLandingAnimation();
   }
 }
-boot();
+
+// Check for existing Supabase session on page load
+(async function initAuth() {
+  const { data } = await _supabase.auth.getSession();
+  if (data?.session) {
+    // Already logged in — skip auth screen, go to landing
+    await fadeToScreen('screen-landing');
+    boot();
+  }
+  // Otherwise stay on auth screen
+})();
 </script>
 
 <!-- ═══════════════════════ SETTINGS PANEL ═══════════════════════ -->
@@ -2213,6 +2358,11 @@ boot();
     <div class="sp-section-label">Your Data</div>
     <button class="sp-btn" onclick="importNewDataFromSettings()">Import new Apple Health export</button>
     <p class="sp-small">Your data never leaves this device.</p>
+  </div>
+
+  <div class="sp-section">
+    <div class="sp-section-label">Account</div>
+    <button class="sp-btn" onclick="handleLogout()" style="color: var(--red);">Sign out</button>
   </div>
 </div>
 
