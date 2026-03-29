@@ -1529,15 +1529,20 @@ async function parseAppleHealthFile(file) {
   const sleepSegs  = [];
   const hrReadings = [];
 
+  const inBedSegs = []; // fallback for iPhone-only users with no Asleep stages
+
   for (const tag of _iterElems(xmlText, 'Record')) {
     const type = _getAttr(tag, 'type');
     if (type === SLEEP_TYPE) {
       const val = _getAttr(tag, 'value') || '';
-      // Accept any "Asleep" state; reject InBed, Awake, and empty
+      const start = _parseAHDate(_getAttr(tag, 'startDate'));
+      const end   = _parseAHDate(_getAttr(tag, 'endDate'));
+      if (!start || !end || end <= start) continue;
+      // Prefer explicit asleep stages (Apple Watch, WHOOP, etc.)
       if (val.includes('Asleep') && !val.includes('Awake')) {
-        const start = _parseAHDate(_getAttr(tag, 'startDate'));
-        const end   = _parseAHDate(_getAttr(tag, 'endDate'));
-        if (start && end && end > start) sleepSegs.push({ start, end });
+        sleepSegs.push({ start, end });
+      } else if (val.includes('InBed')) {
+        inBedSegs.push({ start, end });
       }
     } else if (type === HR_TYPE) {
       const val = parseFloat(_getAttr(tag, 'value'));
@@ -1572,6 +1577,14 @@ async function parseAppleHealthFile(file) {
   }
 
   // ── Group sleep segments into nights ────────────────────────────────
+  // Fallback: if no explicit Asleep stages found, use InBed records instead.
+  // This covers iPhone-only users (no Apple Watch) whose Health app only
+  // writes HKCategoryValueSleepAnalysisInBed rather than stage-specific values.
+  if (sleepSegs.length === 0 && inBedSegs.length > 0) {
+    sleepSegs.push(...inBedSegs);
+    console.log('[Cadence] No Asleep stages found — falling back to InBed records');
+  }
+
   if (sleepSegs.length === 0)
     throw new Error('No sleep tracking data found. Make sure your Apple Watch or another sleep tracker was synced to the Health app before exporting.');
 
