@@ -1293,34 +1293,39 @@ async function fadeToScreen(toId) {
 }
 
 // ── Landing animation ─────────────────────────────────────────────────────
-async function playLandingAnimation() {
-  // Step 1: type "Cadence"
+// fast=true: returning user mode — 3× speed, then transitions to import screen
+async function playLandingAnimation(fast = false) {
+  const spd = fast ? 0.28 : 1; // speed multiplier
   const titleEl = $('land-title');
-  const word    = 'Cadence';
+  titleEl.textContent = ''; // reset in case of re-run
+
+  const word = 'Cadence';
   for (let i = 0; i < word.length; i++) {
     titleEl.textContent += word[i];
-    await delay(TIMING.typeSpeed);
+    await delay(TIMING.typeSpeed * spd);
   }
-  await delay(TIMING.afterTitle);
+  await delay(TIMING.afterTitle * spd);
 
-  // Step 2: "Your body has a rhythm."
   $('land-line-1').style.opacity = '1';
-  await delay(TIMING.afterLine1);
+  await delay(TIMING.afterLine1 * spd);
 
-  // Step 3: "Now you can see it."
   $('land-line-2').style.opacity = '1';
-  await delay(TIMING.afterLine2);
+  await delay(TIMING.afterLine2 * spd);
 
-  // Step 4: privacy note
   $('land-privacy').style.opacity = '1';
-  await delay(TIMING.afterPrivacy);
+  await delay(TIMING.afterPrivacy * spd);
 
-  // Step 5: button
   $('land-btn').style.opacity = '1';
-  await delay(TIMING.afterButton);
+  await delay(TIMING.afterButton * spd);
 
-  // Step 6: how-to link
   $('land-howto').style.opacity = '1';
+
+  // Returning user: after the quick animation, slide to import screen
+  if (fast) {
+    await delay(600);
+    await fadeToScreen('screen-import');
+    if (!checkedInToday()) showModal('modal-checkin');
+  }
 }
 
 // ── Landing how-to toggle ─────────────────────────────────────────────────
@@ -1780,6 +1785,18 @@ async function startAnalysis() {
   const factsEl  = $('an-facts');
   factsEl.innerHTML = ''; // clear leftover facts from any previous run
 
+  // Hard-reset score card + CTA so they're invisible even on a re-run
+  const scoreCard = $('an-score');
+  const ctaBtn    = $('an-cta-btn');
+  scoreCard.classList.remove('in');
+  ctaBtn.classList.remove('in');
+  $('an-score-arc').style.strokeDasharray = `0 263.9`;
+  $('an-score-num').textContent = '0';
+  $('an-score-tag').textContent = '';
+  $('an-score-hdl').textContent = '';
+  statusEl.style.opacity = '1';
+  statusEl.textContent   = 'Reading your Health export…';
+
   function addFact(html) {
     const div = document.createElement('div');
     div.className = 'fact-line';
@@ -1889,10 +1906,28 @@ async function startAnalysis() {
   window._dashData = { meta, nights, rhrRaw, workoutRaw };
 }
 
+// ── Session cache (survives refresh, clears on tab close) ─────────────────
+function cacheSession(data) {
+  // Store meta + nights + workoutRaw only — rhrRaw can be 50k+ entries,
+  // not needed for render (we use per-night .rhr instead)
+  try {
+    const slim = { meta: data.meta, nights: data.nights, workoutRaw: data.workoutRaw };
+    sessionStorage.setItem('cadence_session', JSON.stringify(slim));
+  } catch (e) { /* quota exceeded on huge datasets — silently skip */ }
+}
+
+function restoreSession() {
+  try {
+    const raw = sessionStorage.getItem('cadence_session');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 async function showDashboard() {
   await fadeToScreen('screen-dash');
   const nav = $('bottom-nav');
   if (nav) nav.classList.add('visible');
+  cacheSession(window._dashData);
   renderDashboard(window._dashData);
 }
 
@@ -2103,10 +2138,13 @@ const CADENCE_API = window.CADENCE_API_URL || 'https://cadence-backend-productio
 function clearAllUserData() {
   ['cadence_profile', 'cadence_checkin_date', 'cadence_context_log',
    'cadence_onboarded', 'cadence_name'].forEach(k => localStorage.removeItem(k));
+  sessionStorage.removeItem('cadence_session');
   window._dashData    = null;
   window._pendingFile = null;
   if (typeof clockNights !== 'undefined') { clockNights = []; clockMeta = null; }
   if (typeof _rhrData    !== 'undefined') { _rhrData = null; _workoutData = null; }
+  const nav = $('bottom-nav');
+  if (nav) nav.classList.remove('visible');
 }
 
 function handleReset() {
@@ -2386,6 +2424,7 @@ function reopenSurveyFromSettings() {
 
 function importNewDataFromSettings() {
   closeSettings();
+  sessionStorage.removeItem('cadence_session'); // stale cache — force fresh parse
   $('file-input').click();
 }
 
@@ -2421,19 +2460,32 @@ function setActiveNav(key) {
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 function boot() {
-  const onboarded = localStorage.getItem(KEY_ONBOARDED);
-  console.log('[Cadence] cadence_onboarded:', onboarded);
+  const onboarded   = localStorage.getItem(KEY_ONBOARDED);
+  const sessionData = restoreSession();
+  console.log('[Cadence] boot — onboarded:', !!onboarded, '| session:', !!sessionData);
 
-  if (onboarded) {
-    // Returning user: skip landing entirely, go straight to upload screen
-    $('screen-landing').classList.remove('active');
-    $('screen-import').classList.add('active');
-    if (!checkedInToday()) {
-      showModal('modal-checkin');
-    }
+  if (onboarded && sessionData) {
+    // ── Branch A: Refresh — restore dashboard instantly ──────────────────
+    // sessionStorage survived the reload, data is ready, skip all screens
+    window._dashData = { ...sessionData, rhrRaw: [] }; // rhrRaw not cached; chart uses nights[].rhr
+    clockMeta   = sessionData.meta;
+    clockNights = sessionData.nights;
+    ['screen-landing','screen-import','screen-analysis'].forEach(id => {
+      const el = $(id); if (el) el.classList.remove('active');
+    });
+    $('screen-dash').classList.add('active');
+    const nav = $('bottom-nav');
+    if (nav) nav.classList.add('visible');
+    renderDashboard(window._dashData);
+
+  } else if (onboarded) {
+    // ── Branch B: Returning user, new session — quick landing → import ───
+    // sessionStorage was cleared (tab closed), they need to re-upload
+    playLandingAnimation(true); // fast mode
+
   } else {
-    // First-time user: play the full typed animation
-    playLandingAnimation();
+    // ── Branch C: First-time user — full onboarding animation ────────────
+    playLandingAnimation(false);
   }
 }
 
