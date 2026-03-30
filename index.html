@@ -228,47 +228,82 @@
 
   /* ── SCREEN 3: DASHBOARD ────────────────────────────────────────── */
 
-  /* Header */
-  header { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
-  .header-left { display: flex; align-items: center; gap: 10px; }
-  .header-logo { font-size: 15px; font-weight: 700; letter-spacing: -.02em; display: flex; align-items: center; gap: 6px; }
-  .header-logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); }
-  .header-tag  { font-size: 11px; background: var(--lime-bg); border: 1px solid var(--lime-border); color: #4A8A10; border-radius: 20px; padding: 2px 10px; font-weight: 500; }
-  .header-date { font-size: 12px; color: var(--muted); }
+  /* Paper grain — barely-there physical texture */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9998; opacity: .03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Header — centered title, icon buttons each side */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100; backdrop-filter: blur(8px);
+  }
+  .header-menu-btn, .header-profile-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); transition: background .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .header-menu-btn:active, .header-profile-btn:active { background: var(--surf2); }
+  .header-profile-btn { background: var(--surf2); border: 1px solid var(--border); }
+  .header-logo { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text); }
+
+  /* Dashboard gets bottom padding for fixed nav */
+  #screen-dash { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
   /* Hero block */
-  .hero-block { display: flex; align-items: flex-start; gap: 28px; padding: 28px 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
-  .hero-score-col { display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0; }
-  .score-wrap { position: relative; flex-shrink: 0; width: 110px; height: 110px; }
-  .score-svg  { width: 110px; height: 110px; transform: rotate(-90deg); display: block; }
-  .score-track { fill: none; stroke: var(--border); stroke-width: 7; }
-  .score-arc   { fill: none; stroke: var(--lime); stroke-width: 7; stroke-linecap: round;
-                 stroke-dasharray: 0 263.9; transition: stroke-dasharray .9s cubic-bezier(.4,0,.2,1); }
-  .score-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .score-num  { font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
-  .score-tag  { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 2px; }
-  .hero-headline { font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; letter-spacing: -.01em; max-width: 130px; line-height: 1.4; }
+  .hero-block { display: flex; flex-direction: column; align-items: center; padding: 40px 20px 24px; background: var(--bg); gap: 0; }
 
-  /* Cadence AI card */
-  .cadence-insight-wrap { flex: 1; min-width: 0; padding: 24px 28px; background: linear-gradient(135deg, #1a1040 0%, #0f0f1a 100%); border: 1px solid #7252D855; border-radius: 16px; }
-  .cadence-insight-header { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; margin-bottom: 12px; }
+  /* Block 1: Score */
+  .hero-score-section { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 28px; }
+  .hero-score-num {
+    font-size: 96px; font-weight: 800; line-height: 1; letter-spacing: -.04em;
+    color: var(--green); margin-bottom: 8px;
+    animation: score-breathe 4s ease-in-out infinite;
+  }
+  @keyframes score-breathe { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.03); } }
+  .hero-grade { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; color: var(--muted); margin-bottom: 12px; }
+  .hero-headline { font-size: 20px; font-weight: 400; color: var(--text); text-align: center; line-height: 1.45; max-width: 280px; }
+
+  /* Block 2: Cadence AI card */
+  .cadence-insight-wrap { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 12px; }
+  .cadence-insight-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cadence-header-left { display: flex; align-items: center; gap: 7px; }
+  .cadence-card-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; }
   .cadence-dot { width: 7px; height: 7px; border-radius: 50%; background: #7252D8; box-shadow: 0 0 8px #7252D8; animation: pulse-dot 2s ease-in-out infinite; }
   @keyframes pulse-dot { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.8); } }
-
-  /* Loading dots */
-  .cadence-loading { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
-  .cadence-dots { display: flex; gap: 5px; }
-  .cdot { width: 8px; height: 8px; border-radius: 50%; background: #7252D8; animation: cdot-pulse 1.4s ease-in-out infinite; }
-  .cdot:nth-child(2) { animation-delay: .2s; }
-  .cdot:nth-child(3) { animation-delay: .4s; }
-  @keyframes cdot-pulse { 0%,80%,100%{ opacity:.25; transform:scale(.75); } 40%{ opacity:1; transform:scale(1); } }
-  .cadence-loading-text { font-size: 13px; color: rgba(255,255,255,.45); }
-
-  .cadence-insight-body { font-size: 16px; color: rgba(255,255,255,.82); line-height: 1.75; font-weight: 400; }
-  .cadence-tonight-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(114,82,216,.15); }
-  .cadence-tonight-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.35); margin-bottom: 4px; }
-  .cadence-tonight-time { font-size: 36px; font-weight: 800; color: #7252D8; letter-spacing: -.03em; line-height: 1; }
+  .cadence-expand-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--surf2); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--faint); }
+  .cadence-loading { display: flex; flex-direction: column; gap: 9px; padding: 4px 0 8px; }
+  .cadence-skel { height: 14px; background: var(--surf2); border-radius: 6px; animation: skel-pulse 1.5s ease-in-out infinite; }
+  @keyframes skel-pulse { 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
+  .cadence-error { font-size: 14px; color: var(--muted); line-height: 1.6; padding: 4px 0; }
+  .cadence-insight-body { font-size: 16px; color: var(--text); line-height: 1.75; font-weight: 400; }
+  .cadence-divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .cadence-tonight-section { }
+  .cadence-tonight-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 4px; }
+  .cadence-tonight-time { font-size: 52px; font-weight: 800; color: var(--text); letter-spacing: -.03em; line-height: 1; }
+  .cadence-tonight-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .cadence-tonight-conf { font-size: 11px; color: var(--amber); margin-top: 6px; }
+
+  /* Block 3: Action bar */
+  .hero-action-box { width: 100%; background: var(--lime); border-radius: 10px; padding: 18px 20px; min-height: 56px; display: none; align-items: center; justify-content: space-between; gap: 12px; }
+  .hero-action-text { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; }
+  .hero-action-icon { flex-shrink: 0; color: var(--text); opacity: .75; }
+
+  /* Bottom nav — shown via JS when dashboard is active */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 64px; background: var(--surface); border-top: 1px solid var(--border); display: none; align-items: stretch; z-index: 200; padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-nav.visible { display: flex; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: none; border: none; cursor: pointer; color: var(--faint); transition: color .15s; padding: 8px 4px; min-height: 48px; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+  .nav-item.active { color: var(--lime); }
+  .nav-item svg { width: 22px; height: 22px; display: block; }
+  .nav-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* Footer */
+  .dash-footer { padding: 40px 20px; text-align: center; font-size: 11px; color: var(--muted); font-weight: 400; }
 
   /* Card headers (shared) */
   .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
@@ -284,18 +319,18 @@
 
   /* Accordion sections */
   .acc-section { background: var(--surface); border-bottom: 1px solid var(--border); }
-  .acc-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; cursor: pointer; user-select: none; min-height: 56px; transition: background .15s; }
-  .acc-header:hover { background: var(--surf2); }
-  .acc-title { font-size: 14px; font-weight: 700; letter-spacing: -.015em; color: var(--text); }
-  .acc-chevron { display: flex; align-items: center; justify-content: center; color: var(--faint); transition: transform 300ms ease; flex-shrink: 0; margin-left: 12px; }
+  .acc-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px; cursor: pointer; user-select: none; min-height: 56px; transition: background .15s; -webkit-tap-highlight-color: transparent; }
+  .acc-header:active { background: var(--surf2); }
+  .acc-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text); }
+  .acc-chevron { display: flex; align-items: center; justify-content: center; color: var(--faint); transition: transform 200ms ease; flex-shrink: 0; margin-left: 12px; }
   .acc-section.open .acc-chevron { transform: rotate(180deg); }
-  .acc-body { overflow: hidden; max-height: 0; transition: max-height 300ms ease; }
+  .acc-body { overflow: hidden; max-height: 0; transition: max-height 300ms ease-out; }
   .acc-section.open .acc-body { max-height: 3000px; }
-  .acc-inner { padding: 4px 32px 32px; }
+  .acc-inner { padding: 4px 20px 28px; }
 
   /* Stats row inside History accordion */
   .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
-  .stat { padding: 18px 20px; background: var(--surface); opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; }
+  .stat { padding: 18px 20px; min-height: 80px; background: var(--surface); opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; }
   .stat.in { opacity: 1; transform: none; }
   .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: 5px; }
   .stat-value { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
@@ -325,22 +360,22 @@
   .toggle-btn.active { background: var(--lime-bg); border-color: var(--lime-border); color: #4A8A10; font-weight: 600; }
 
   .legend-title  { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); margin-bottom: 8px; margin-top: 14px; }
-  .legend-row    { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font-size: 11px; color: var(--muted); }
+  .legend-row    { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font-size: 13px; color: var(--muted); }
   .legend-swatch { width: 22px; height: 3px; border-radius: 2px; flex-shrink: 0; }
   .legend-dot    { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-  .insight-box { padding: 14px 16px; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .insight-box { padding: 20px; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; font-size: 15px; color: var(--muted); line-height: 1.7; }
   .insight-box strong { color: var(--text); font-weight: 600; }
   .rec { margin-top: 10px; padding: 10px 14px; background: var(--lime-bg); border: 1px solid var(--lime-border); border-radius: 8px; color: var(--text); font-size: 12px; font-weight: 500; }
   .rec span { color: #3A7A08; font-weight: 700; }
 
   /* Blueprint legend */
-  .bp-legend { display: flex; flex-direction: column; gap: 7px; }
-  .bp-row    { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .bp-legend { display: flex; flex-direction: column; gap: 7px; width: 100%; }
+  .bp-row    { display: flex; align-items: center; gap: 8px; font-size: 13px; width: 100%; }
   .bp-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
   .bp-label  { color: var(--muted); }
   .bp-label span { color: var(--text); font-weight: 500; }
-  .bp-label em   { color: var(--faint); font-style: normal; font-size: 10px; }
+  .bp-label em   { color: var(--faint); font-style: normal; font-size: 11px; }
 
   /* Consistency */
   .c-stack  { display: flex; flex-direction: column; gap: 12px; }
@@ -383,15 +418,13 @@
   .modal-skip { width:100%; padding:10px; background:transparent; color:var(--muted); border:none; font-size:13px; cursor:pointer; margin-top:6px; }
   .modal-skip:hover { color:var(--text); }
 
-  /* ── Cadence AI insight bar ── */
-  .cadence-insight-wrap { margin: 0 0 24px; padding: 18px 20px; background: linear-gradient(135deg, #1a1040 0%, #0f0f1a 100%); border: 1px solid #7252D855; border-radius: 14px; }
-  .cadence-insight-header { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; margin-bottom: 10px; }
-  .cadence-dot { width: 7px; height: 7px; border-radius: 50%; background: #7252D8; box-shadow: 0 0 8px #7252D8; animation: pulse-dot 2s ease-in-out infinite; }
-  @keyframes pulse-dot { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.8); } }
-  .cadence-insight-body { font-size: 14px; color: var(--text); line-height: 1.75; }
-  .cadence-tonight { margin-top: 12px; padding-top: 10px; border-top: 1px solid #7252D820; font-size: 12px; color: var(--muted); }
-  .cadence-tonight strong { color: #7252D8; }
   .corr-insight strong { color: var(--text); font-weight: 600; }
+
+  /* Chart plain-language summaries */
+  .chart-summary { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+
+  /* Generic text skeleton for inline loading states */
+  .skel-text { display: block; height: 14px; background: var(--surf2); border-radius: 6px; animation: skel-pulse 1.5s ease-in-out infinite; margin-bottom: 6px; }
   .corr-cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 9px 14px; background: var(--lime-bg); border: 1px solid var(--lime-border); border-radius: 8px; color: #3A7A08; font-size: 12px; font-weight: 600; }
 
   .chart-wrap  { position: relative; }
@@ -406,13 +439,7 @@
   #clock-tip .tip-badge { display: inline-block; margin-top: 6px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
 
   /* ── Settings button + panel ─────────────────────────────────────── */
-  .settings-btn {
-    position: fixed; top: 20px; right: 20px; width: 36px; height: 36px;
-    border-radius: 50%; background: var(--surf2); border: 1px solid var(--border);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    color: var(--muted); z-index: 200; transition: background .15s, color .15s;
-  }
-  .settings-btn:hover { background: var(--border); color: var(--text); }
+  .settings-btn { display: none; /* replaced by header profile button */ }
 
   .settings-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 500;
@@ -467,7 +494,6 @@
   .sp-small { font-size: 11px; color: var(--muted); margin-top: 10px; }
 
   @media (max-width: 960px) {
-    .hero-block { flex-wrap: wrap; gap: 20px; }
     .acc-card-2, .acc-card-3, .acc-card-4 { grid-column: span 6; }
     .dual-wrap { flex-wrap: wrap; }
     canvas.clock { width: 200px; height: 200px; }
@@ -478,18 +504,19 @@
   }
 
   @media (max-width: 480px) {
-    .hero-block { flex-direction: column; padding: 20px 16px; gap: 16px; }
-    .hero-score-col { flex-direction: row; align-items: center; gap: 16px; }
-    .score-wrap { width: 90px; height: 90px; }
-    .score-svg  { width: 90px; height: 90px; }
-    .score-num  { font-size: 22px; }
-    .cadence-insight-wrap { padding: 20px; }
-    .cadence-tonight-time { font-size: 28px; }
+    header { padding: 12px 20px; }
+    .hero-block { padding: 20px 16px; }
     .acc-header { padding: 16px 20px; }
     .acc-inner  { padding: 4px 20px 24px; }
+    .acc-card   { padding: 20px; }
     .stats-row  { grid-template-columns: 1fr 1fr; }
     .import-h1  { font-size: 32px; }
     .settings-panel { width: 100%; }
+    canvas.clock { width: 180px; height: 180px; }
+    .chart-wrap { margin: 0; }
+    .dual-wrap  { gap: 16px; }
+    .corr-grid  { grid-template-columns: 1fr; }
+    .corr-box.delta { grid-column: span 1; }
   }
   </style>
 </head>
@@ -707,56 +734,66 @@
 <div id="screen-dash" class="screen">
 
 <header>
-  <div class="header-left">
-    <div class="header-logo"><div class="header-logo-dot"></div>Cadence</div>
-    <span class="header-tag">Apple Health · Circadian Intelligence</span>
-  </div>
-  <div class="header-date" id="header-date" style="padding-right:52px"></div>
+  <button class="header-menu-btn" onclick="openSettings()" aria-label="Menu">
+    <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
+      <path d="M0 1h18M0 6.5h18M0 12h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <div class="header-logo">CADENCE</div>
+  <button class="header-profile-btn" onclick="openSettings()" aria-label="Profile">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="5.5" r="2.5" fill="currentColor"/>
+      <path d="M2 15c0-3.314 2.686-5.5 6-5.5s6 2.186 6 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    </svg>
+  </button>
 </header>
 
-<button class="settings-btn" id="settings-btn" onclick="openSettings()" title="Settings">
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <circle cx="8" cy="5.5" r="2.5" fill="currentColor"/>
-    <path d="M2 15c0-3.314 2.686-5.5 6-5.5s6 2.186 6 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-  </svg>
-</button>
+<button class="settings-btn" id="settings-btn" style="display:none"></button>
 
-<!-- ── Hero block: score ring + Cadence AI card (above the fold) ── -->
+<!-- ── Hero: score + Cadence AI card + action box (stacked vertical) ── -->
 <div class="hero-block">
-  <div class="hero-score-col">
-    <div class="score-wrap">
-      <svg class="score-svg" viewBox="0 0 100 100">
-        <circle class="score-track" cx="50" cy="50" r="42"/>
-        <circle class="score-arc" id="score-arc" cx="50" cy="50" r="42"/>
-      </svg>
-      <div class="score-inner">
-        <div class="score-num" id="rhythm-score">—</div>
-        <div class="score-tag" id="rhythm-tag">—</div>
-      </div>
-    </div>
+
+  <!-- Block 1: Score number -->
+  <div class="hero-score-section">
+    <div class="hero-score-num" id="rhythm-score">—</div>
+    <div class="hero-grade" id="rhythm-tag">—</div>
     <div class="hero-headline" id="hero-headline">—</div>
   </div>
 
+  <!-- Block 2: Cadence AI card -->
   <div class="cadence-insight-wrap" id="cadence-insight-wrap">
     <div class="cadence-insight-header">
-      <div class="cadence-dot"></div>
-      <span>Cadence</span>
+      <div class="cadence-header-left">
+        <div class="cadence-dot"></div>
+        <span class="cadence-card-label">CADENCE</span>
+      </div>
+      <button class="cadence-expand-btn" aria-label="Expand">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M1 5V1h4M8 1h4v4M12 8v4H8M5 12H1V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
     <div class="cadence-loading" id="cadence-loading">
-      <div class="cadence-dots">
-        <div class="cdot"></div>
-        <div class="cdot"></div>
-        <div class="cdot"></div>
-      </div>
-      <span class="cadence-loading-text">Cadence is reading your data…</span>
+      <div class="cadence-skel" style="width:100%"></div>
+      <div class="cadence-skel" style="width:85%"></div>
+      <div class="cadence-skel" style="width:68%"></div>
     </div>
     <div class="cadence-insight-body" id="cadence-insight-body" style="display:none"></div>
+    <div class="cadence-error" id="cadence-error" style="display:none">
+      Cadence is having trouble connecting. Try reimporting your data.
+    </div>
     <div class="cadence-tonight-section" id="cadence-tonight-section" style="display:none">
-      <div class="cadence-tonight-label">Tonight's target</div>
+      <div class="cadence-divider"></div>
+      <div class="cadence-tonight-label">TONIGHT</div>
       <div class="cadence-tonight-time" id="cadence-tonight-time">—</div>
+      <div class="cadence-tonight-sub" id="cadence-tonight-sub"></div>
       <div class="cadence-tonight-conf" id="cadence-tonight-conf" style="display:none">⚠ Low confidence — upload more nights for better accuracy</div>
     </div>
   </div>
+
+  <!-- Block 3: Action box (always shown, computed from local data) -->
+  <div class="hero-action-box" id="hero-action-box" style="display:none"></div>
+
 </div>
 
 <!-- ── Accordion sections ── -->
@@ -784,7 +821,7 @@
                   <button class="toggle-btn active" id="btn-all" onclick="setClockMode('all')">All nights</button>
                   <button class="toggle-btn" id="btn-consistent" onclick="setClockMode('consistent')">Consistent only</button>
                 </div>
-                <div class="clock-panel-sub">Hover any arc or dot for details</div>
+                <div class="clock-panel-sub">Tap any arc or dot for details</div>
               </div>
               <div class="clock-panel">
                 <div class="clock-panel-label">Your ideal schedule <span style="font-weight:400;color:var(--faint);font-size:9px;text-transform:none;letter-spacing:0">· built from your data</span></div>
@@ -802,7 +839,7 @@
                 <div class="legend-row" style="margin-top:8px"><div class="legend-dot" style="background:#C89B0E"></div>Workout session</div>
               </div>
             </div>
-            <div class="insight-box clock-insight-row" id="clock-insight">Loading…</div>
+            <div class="insight-box clock-insight-row" id="clock-insight"><span class="skel-text" style="width:90%"></span><span class="skel-text" style="width:75%"></span><span class="skel-text" style="width:55%"></span></div>
           </div>
 
           <div class="acc-card acc-card-2">
@@ -834,7 +871,7 @@
                 <div style="font-size:11px;color:var(--muted);margin-top:3px">bpm higher the next morning</div>
               </div>
             </div>
-            <div class="corr-insight" id="corr-insight">Loading…</div>
+            <div class="corr-insight" id="corr-insight"><span class="skel-text" style="width:88%"></span><span class="skel-text" style="width:70%"></span><span class="skel-text" style="width:50%"></span></div>
           </div>
         </div>
       </div>
@@ -852,9 +889,10 @@
         <div class="acc-grid">
           <div class="acc-card acc-card-3">
             <div class="card-header">
-              <div class="card-title">Resting Heart Rate</div>
+              <div class="card-title" id="rhr-card-title">Resting Heart Rate</div>
               <div class="card-meta" id="b-rhr"></div>
             </div>
+            <div class="chart-summary">Your heart rate over time — lower trend means improving fitness</div>
             <div class="chart-wrap chart-h200"><canvas id="chart-rhr"></canvas></div>
           </div>
           <div class="acc-card acc-card-3">
@@ -862,6 +900,7 @@
               <div class="card-title">When you work out</div>
               <div class="card-meta" id="b-workouts"></div>
             </div>
+            <div class="chart-summary" id="workout-summary">When you actually train — tap a bar to see session count</div>
             <div class="chart-wrap chart-h200"><canvas id="chart-workout-timing"></canvas></div>
           </div>
         </div>
@@ -913,7 +952,42 @@
   </div>
 
 </div><!-- /acc-sections -->
+
+<div class="dash-footer">Your data never leaves this device.</div>
+
 </div><!-- /screen-dash -->
+
+<!-- ═══════════════════════ BOTTOM NAV ═══════════════════════ -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item active" id="nav-journal" onclick="setActiveNav('journal')">
+    <svg viewBox="0 0 22 22" fill="none">
+      <rect x="4" y="2" width="14" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M8 7h6M8 11h6M8 15h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-label">Journal</span>
+  </button>
+  <button class="nav-item" id="nav-patterns" onclick="setActiveNav('patterns')">
+    <svg viewBox="0 0 22 22" fill="none">
+      <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M11 3v8l5 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-label">Patterns</span>
+  </button>
+  <button class="nav-item" id="nav-training" onclick="setActiveNav('training')">
+    <svg viewBox="0 0 22 22" fill="none">
+      <path d="M3 14l4-5 4 3 4-6 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="nav-label">Training</span>
+  </button>
+  <button class="nav-item" id="nav-history" onclick="setActiveNav('history')">
+    <svg viewBox="0 0 22 22" fill="none">
+      <path d="M3 11a8 8 0 1 1 2.4 5.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M3 7v4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11 7v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-label">History</span>
+  </button>
+</nav>
 
 <!-- Tooltip -->
 <div id="clock-tip">
@@ -992,11 +1066,11 @@ function rhythmScore(meta){
   return Math.round(Math.max(0, Math.min(100, 100 - onsetP - jetlagP - sleepP)));
 }
 function rhythmMeta(score){
-  if(score>=85) return{label:'Excellent', color:'#3E9B32',headline:'Your sleep rhythm is dialed in.',        hint:'You\'re one of the consistent ones. Keep protecting this window.'};
-  if(score>=70) return{label:'Good',      color:'#8CC63F',headline:'Your rhythm is solid.',                  hint:'A small tightening of your bedtime would take this to the next level.'};
-  if(score>=55) return{label:'Fair',      color:'#C89B0E',headline:'Your rhythm has room to grow.',          hint:'Pulling your bedtime 30–45 min earlier and keeping it consistent is the highest-leverage change you can make.'};
-  if(score>=40) return{label:'Developing',color:'#C4800C',headline:'Your body is craving more consistency.',hint:'Your sleep timing shifts a lot night to night. Even small improvements here pay off fast.'};
-  return               {label:'Irregular',color:'#D64B39',headline:'Your rhythm needs attention.',           hint:'Irregular sleep is the single biggest thing holding back your recovery right now.'};
+  if(score>=75) return{label:'EXCEPTIONAL', color:'var(--green)', headline:'Your body is ready for a deep recovery today.'};
+  if(score>=60) return{label:'GOOD',        color:'var(--green)', headline:'Your rhythm is solid. Keep the window tight.'};
+  if(score>=50) return{label:'FAIR',        color:'var(--amber)', headline:'Your rhythm has room to grow.'};
+  if(score>=35) return{label:'DEVELOPING',  color:'var(--amber)', headline:'Your body is craving more consistency.'};
+  return               {label:'LOW',         color:'var(--red)',   headline:'Your rhythm needs attention right now.'};
 }
 
 // ── Clock state ────────────────────────────────────────────────────────────
@@ -1266,16 +1340,20 @@ function toggleLandHowTo() {
   }
 }
 
-// ── Hover ──────────────────────────────────────────────────────────────────
+// ── Clock interaction (mouse + touch) ─────────────────────────────────────
 function setupClockHover(canvasEl){
   const tip=$('clock-tip');
-  canvasEl.addEventListener('mousemove',e=>{
+
+  function hitTest(clientX, clientY){
     const rect=canvasEl.getBoundingClientRect();
-    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    // scale client coords to logical 240px canvas space
+    const scaleX=240/rect.width, scaleY=240/rect.height;
+    const mx=(clientX-rect.left)*scaleX, my=(clientY-rect.top)*scaleY;
     const size=240, cx=size/2, cy=size/2, R=size*0.38, arcR=R*0.68;
+
     for(const dot of clockWorkoutDots){
       const dx=mx-dot.x, dy=my-dot.y;
-      if(Math.sqrt(dx*dx+dy*dy)<9){
+      if(Math.sqrt(dx*dx+dy*dy)<12){
         const w=dot.w;
         $('tip-date').textContent=w.date;
         $('tip-type-row').style.display=''; $('tip-type').textContent=w.type;
@@ -1285,12 +1363,11 @@ function setupClockHover(canvasEl){
         $('tip-dur-row').style.display=w.dur?'':'none';
         if(w.dur) $('tip-dur').textContent=Math.round(w.dur)+' min';
         $('tip-badge').innerHTML='<span class="tip-badge grade-orange">Workout</span>';
-        tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
-        return;
+        return {found:true};
       }
     }
     const dx=mx-cx, dy=my-cy, dist=Math.sqrt(dx*dx+dy*dy);
-    if(Math.abs(dist-arcR)>16){tip.style.display='none';return;}
+    if(Math.abs(dist-arcR)>18) return {found:false};
     let mA=Math.atan2(dy,dx); if(mA<0)mA+=Math.PI*2;
     let best=null, bDist=Infinity;
     for(const arc of clockArcs){
@@ -1299,7 +1376,7 @@ function setupClockHover(canvasEl){
       const rel=((mA-arc.sa+Math.PI*2)%(Math.PI*2));
       if(rel<=span){const d=Math.abs(rel-span/2);if(d<bDist){bDist=d;best=arc;}}
     }
-    if(!best){tip.style.display='none';return;}
+    if(!best) return {found:false};
     const n=best.night;
     $('tip-date').textContent=n.wakeDate;
     $('tip-type-row').style.display='none';
@@ -1312,9 +1389,38 @@ function setupClockHover(canvasEl){
     $('tip-badge').innerHTML=best.isC
       ?'<span class="tip-badge grade-green">On schedule</span>'
       :(n.deviationMin>60||n.sleepHrs<6)?'<span class="tip-badge grade-red">Off schedule</span>':'';
-    tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
-  });
+    return {found:true};
+  }
+
+  function showTip(clientX, clientY){
+    const result=hitTest(clientX, clientY);
+    if(!result.found){tip.style.display='none';return;}
+    // Position above finger on touch, beside cursor on mouse
+    const tipX=Math.min(clientX+14, window.innerWidth-175);
+    const tipY=Math.max(clientY-90, 8);
+    tip.style.display='block';
+    tip.style.left=tipX+'px';
+    tip.style.top=tipY+'px';
+  }
+
+  canvasEl.addEventListener('mousemove',e=>showTip(e.clientX,e.clientY));
   canvasEl.addEventListener('mouseleave',()=>{tip.style.display='none';});
+
+  // Touch support for mobile
+  canvasEl.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    showTip(t.clientX, t.clientY);
+  },{passive:false});
+  canvasEl.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    showTip(t.clientX, t.clientY);
+  },{passive:false});
+  let _touchHideTimer=null;
+  canvasEl.addEventListener('touchend',()=>{
+    _touchHideTimer=setTimeout(()=>{tip.style.display='none';},2000);
+  });
 }
 
 // ── Charts ─────────────────────────────────────────────────────────────────
@@ -1785,6 +1891,8 @@ async function startAnalysis() {
 
 async function showDashboard() {
   await fadeToScreen('screen-dash');
+  const nav = $('bottom-nav');
+  if (nav) nav.classList.add('visible');
   renderDashboard(window._dashData);
 }
 
@@ -1854,14 +1962,14 @@ importDropZone.addEventListener('drop', e => {
 
 // ── Dashboard render ───────────────────────────────────────────────────────
 function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
-  $('header-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-
-  // ── Hero ──
   const score=rhythmScore(meta), rm=rhythmMeta(score);
-  const circumference=2*Math.PI*42, dash=(score/100)*circumference;
-  $('score-arc').style.stroke=rm.color;
-  setTimeout(()=>$('score-arc').setAttribute('stroke-dasharray',`${dash} ${circumference}`),80);
-  $('rhythm-score').textContent=score; $('rhythm-score').style.color=rm.color;
+  console.log(`[Cadence] UI v2 loaded`);
+  console.log(`[Cadence] Score: ${score} Grade: ${rm.label}`);
+
+  // ── Hero: big number ──
+  const scoreEl=$('rhythm-score');
+  scoreEl.textContent=score;
+  scoreEl.style.color=rm.color;
   $('rhythm-tag').textContent=rm.label;
   $('hero-headline').textContent=rm.headline;
 
@@ -1869,10 +1977,33 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   const windDown=fmtHour((meta.medianOnset-1.5)%24);
   const targetBed=fmtHour((meta.medianOnset+0.5)%24);
 
+  // ── Action bar ──
+  const actionEl=$('hero-action-box');
+  if(actionEl){
+    actionEl.innerHTML=`
+      <span class="hero-action-text">Turn on blue light filters at ${windDown}.</span>
+      <span class="hero-action-icon">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 1v2M11 19v2M1 11h2M19 11h2M3.9 3.9l1.4 1.4M16.7 16.7l1.4 1.4M3.9 18.1l1.4-1.4M16.7 5.3l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </span>`;
+    actionEl.style.display='flex';
+  }
+
+  // ── Wind-down sub-label pre-populated for when API returns ──
+  const subEl=$('cadence-tonight-sub');
+  if(subEl) subEl.textContent=`Begin at ${windDown}`;
+
   // ── Stats bar (staggered fade-in) ──
+  // ── Wake time — guard against null/NaN ──
+  const wakeDisplay = (meta.avgWakeHour != null && !isNaN(meta.avgWakeHour))
+    ? fmtHour(meta.avgWakeHour) : 'Not enough data';
+  console.log(`[Cadence] Wake time: ${wakeDisplay}`);
+
   const statData=[
     ()=>{ $('s-onset').textContent=fmtHour(meta.medianOnset%24); $('s-sleep-sub').textContent=`${meta.totalNights} nights`; },
-    ()=>{ $('s-wake').textContent=fmtHour(meta.avgWakeHour); },
+    ()=>{ $('s-wake').textContent=wakeDisplay; },
     ()=>{ $('s-sleep').textContent=meta.avgSleepHrs.toFixed(1); },
     ()=>{ if(meta.jetlagMin!=null){ $('s-jetlag').textContent=Math.round(meta.jetlagMin); $('s-jetlag-grade').innerHTML=`<span class="grade ${grade(meta.jetlagMin).cls}">${grade(meta.jetlagMin).label}</span>`; } },
   ];
@@ -1920,10 +2051,20 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   $('b-sleep').textContent=`${meta.totalNights} nights`;
   timeLine('chart-sleep',nights.map(n=>({x:n.wakeDate,y:+n.sleepHrs.toFixed(2)})),'#8CC63F','hrs');
 
-  // ── Resting HR ──
-  const rhrPts=rhrRaw.map(r=>({x:r.startDate.slice(0,10),y:+r.value})).filter(p=>!isNaN(p.y)).sort((a,b)=>a.x.localeCompare(b.x));
-  $('b-rhr').textContent=`avg ${Math.round(mean(rhrPts.map(p=>p.y)))} bpm · ${rhrPts.length} readings`;
-  timeLine('chart-rhr',rhrPts,'#D64B39','bpm');
+  // ── Resting HR — use morning-after-wake readings attached to each night ──
+  // (avoids mixing in active/workout HR which averages ~127 bpm and spikes to 200)
+  const nightsWithRhr = nights.filter(n => n.rhr !== null);
+  const rhrPts = nightsWithRhr
+    .map(n => ({ x: n.wakeDate, y: n.rhr }))
+    .sort((a, b) => a.x.localeCompare(b.x));
+  const rhrAvg = rhrPts.length > 0 ? Math.round(mean(rhrPts.map(p => p.y))) : null;
+  const rhrLabel = rhrPts.length >= 5 ? 'Resting Heart Rate' : 'Morning Heart Rate';
+  if ($('rhr-card-title')) $('rhr-card-title').textContent = rhrLabel;
+  $('b-rhr').textContent = rhrPts.length > 0
+    ? `avg ${rhrAvg} bpm · ${rhrPts.length} mornings`
+    : 'No resting HR data';
+  console.log(`[Cadence] RHR data: ${rhrPts.length} readings, avg ${rhrAvg ?? 'n/a'} bpm`);
+  timeLine('chart-rhr', rhrPts, '#D64B39', 'bpm');
 
   // ── Workout timing bar ──
   const hourCounts=Array(24).fill(0);
@@ -1938,6 +2079,8 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   }
   const peakH=hourCounts.indexOf(Math.max(...hourCounts));
   $('b-workouts').textContent=`${workoutRaw.length} sessions · peak ${wrkLabels[peakH]}`;
+  const wrkSumEl=$('workout-summary');
+  if(wrkSumEl) wrkSumEl.textContent=`When you actually train — your peak window is ${wrkLabels[peakH]}`;
   new Chart($('chart-workout-timing'),{type:'bar',
     data:{labels:wrkLabels,datasets:[{data:hourCounts,backgroundColor:windowColors,borderColor:windowColors.map(c=>c.slice(0,7)+'cc'),borderWidth:1,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,
@@ -2125,10 +2268,13 @@ async function fetchCadenceInsight(meta, score) {
   // Save this session to the rolling context log before sending
   saveSessionSummary(score, meta);
 
-  // Show loading state
+  // Show skeleton loading state
   $('cadence-loading').style.display = 'flex';
   $('cadence-insight-body').style.display = 'none';
   $('cadence-tonight-section').style.display = 'none';
+  $('cadence-error').style.display = 'none';
+
+  console.log('[Cadence] Cadence card: loading');
 
   const payload = {
     readiness_score:          score,
@@ -2144,28 +2290,36 @@ async function fetchCadenceInsight(meta, score) {
     user_name:                localStorage.getItem(KEY_NAME) || undefined,
   };
 
-  try {
-    const headers = {
-      'Content-Type':  'application/json',
-      'X-Cadence-Key': 'cad-f7x2-9kqm-3wpl',
-    };
+  const headers = {
+    'Content-Type':  'application/json',
+    'X-Cadence-Key': 'cad-f7x2-9kqm-3wpl',
+  };
 
+  async function attemptFetch() {
     const res = await fetch(`${CADENCE_API}/narrate`, {
-      method:  'POST',
+      method: 'POST',
       headers,
       body: JSON.stringify(payload),
     });
-
-    // Parse error detail from backend before throwing
     if (!res.ok) {
       let detail = 'Something went wrong. Try again.';
       try { const e = await res.json(); detail = e.detail || detail; } catch {}
       throw new Error(detail);
     }
+    return res.json();
+  }
 
-    const data = await res.json();
+  try {
+    let data;
+    try {
+      data = await attemptFetch();
+    } catch (firstErr) {
+      console.warn('[Cadence] First attempt failed:', firstErr.message, '— retrying in 2s');
+      await delay(2000);
+      data = await attemptFetch(); // one retry
+    }
 
-    // Hide loading, reveal narration
+    // Hide skeleton, reveal narration
     $('cadence-loading').style.display = 'none';
     $('cadence-insight-body').textContent = data.narration;
     $('cadence-insight-body').style.display = '';
@@ -2181,11 +2335,14 @@ async function fetchCadenceInsight(meta, score) {
       $('cadence-tonight-conf').style.display = '';
     }
 
+    console.log('[Cadence] Cadence card: success');
+
   } catch (err) {
+    // Both attempts failed — show soft message, never "Load failed"
     $('cadence-loading').style.display = 'none';
-    $('cadence-insight-body').textContent = err.message || 'Could not load insight. Try again.';
-    $('cadence-insight-body').style.display = '';
-    console.error('Cadence API error:', err);
+    $('cadence-error').style.display = '';
+    console.error('[Cadence] API error (both attempts failed):', err.message);
+    console.log('[Cadence] Cadence card: error');
   }
 }
 
@@ -2230,6 +2387,36 @@ function reopenSurveyFromSettings() {
 function importNewDataFromSettings() {
   closeSettings();
   $('file-input').click();
+}
+
+// ── Bottom nav ────────────────────────────────────────────────────────────
+const NAV_SECTION_MAP = {
+  journal:  null,            // stays at top (hero)
+  patterns: 'acc-patterns',
+  training: 'acc-training',
+  history:  'acc-history',
+};
+
+function setActiveNav(key) {
+  ['journal','patterns','training','history'].forEach(k => {
+    $('nav-'+k).classList.toggle('active', k === key);
+  });
+
+  const sectionId = NAV_SECTION_MAP[key];
+  if (sectionId) {
+    const section = $(sectionId);
+    if (section) {
+      // Ensure open
+      if (!section.classList.contains('open')) section.classList.add('open');
+      // Scroll into view with offset for sticky header
+      setTimeout(() => {
+        const top = section.getBoundingClientRect().top + window.scrollY - 60;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }, 50);
+    }
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────
