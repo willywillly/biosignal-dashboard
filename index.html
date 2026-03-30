@@ -1293,39 +1293,30 @@ async function fadeToScreen(toId) {
 }
 
 // ── Landing animation ─────────────────────────────────────────────────────
-// fast=true: returning user mode — 3× speed, then transitions to import screen
-async function playLandingAnimation(fast = false) {
-  const spd = fast ? 0.28 : 1; // speed multiplier
+async function playLandingAnimation() {
   const titleEl = $('land-title');
-  titleEl.textContent = ''; // reset in case of re-run
+  titleEl.textContent = '';
 
   const word = 'Cadence';
   for (let i = 0; i < word.length; i++) {
     titleEl.textContent += word[i];
-    await delay(TIMING.typeSpeed * spd);
+    await delay(TIMING.typeSpeed);
   }
-  await delay(TIMING.afterTitle * spd);
+  await delay(TIMING.afterTitle);
 
   $('land-line-1').style.opacity = '1';
-  await delay(TIMING.afterLine1 * spd);
+  await delay(TIMING.afterLine1);
 
   $('land-line-2').style.opacity = '1';
-  await delay(TIMING.afterLine2 * spd);
+  await delay(TIMING.afterLine2);
 
   $('land-privacy').style.opacity = '1';
-  await delay(TIMING.afterPrivacy * spd);
+  await delay(TIMING.afterPrivacy);
 
   $('land-btn').style.opacity = '1';
-  await delay(TIMING.afterButton * spd);
+  await delay(TIMING.afterButton);
 
   $('land-howto').style.opacity = '1';
-
-  // Returning user: after the quick animation, slide to import screen
-  if (fast) {
-    await delay(600);
-    await fadeToScreen('screen-import');
-    if (!checkedInToday()) showModal('modal-checkin');
-  }
 }
 
 // ── Landing how-to toggle ─────────────────────────────────────────────────
@@ -1906,20 +1897,35 @@ async function startAnalysis() {
   window._dashData = { meta, nights, rhrRaw, workoutRaw };
 }
 
-// ── Session cache (survives refresh, clears on tab close) ─────────────────
+// ── Session cache — localStorage with 24h TTL ────────────────────────────
+// sessionStorage dies on every iOS Safari reload. localStorage survives
+// refreshes, tab closes, and app re-opens. TTL keeps data fresh.
+const KEY_CACHE    = 'cadence_dash_cache';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 function cacheSession(data) {
-  // Store meta + nights + workoutRaw only — rhrRaw can be 50k+ entries,
-  // not needed for render (we use per-night .rhr instead)
+  // Store meta + nights + workoutRaw only — rhrRaw can be 50k+ entries
   try {
-    const slim = { meta: data.meta, nights: data.nights, workoutRaw: data.workoutRaw };
-    sessionStorage.setItem('cadence_session', JSON.stringify(slim));
-  } catch (e) { /* quota exceeded on huge datasets — silently skip */ }
+    const payload = {
+      meta:       data.meta,
+      nights:     data.nights,
+      workoutRaw: data.workoutRaw,
+      cachedAt:   Date.now(),
+    };
+    localStorage.setItem(KEY_CACHE, JSON.stringify(payload));
+  } catch (e) { /* quota exceeded on huge datasets — skip silently */ }
 }
 
 function restoreSession() {
   try {
-    const raw = sessionStorage.getItem('cadence_session');
-    return raw ? JSON.parse(raw) : null;
+    const raw = localStorage.getItem(KEY_CACHE);
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    if (Date.now() - payload.cachedAt > CACHE_TTL_MS) {
+      localStorage.removeItem(KEY_CACHE); // stale — clear it
+      return null;
+    }
+    return payload;
   } catch { return null; }
 }
 
@@ -2137,8 +2143,7 @@ const CADENCE_API = window.CADENCE_API_URL || 'https://cadence-backend-productio
 // Used by "Clear my data" in settings so someone can fully reset.
 function clearAllUserData() {
   ['cadence_profile', 'cadence_checkin_date', 'cadence_context_log',
-   'cadence_onboarded', 'cadence_name'].forEach(k => localStorage.removeItem(k));
-  sessionStorage.removeItem('cadence_session');
+   'cadence_onboarded', 'cadence_name', 'cadence_dash_cache'].forEach(k => localStorage.removeItem(k));
   window._dashData    = null;
   window._pendingFile = null;
   if (typeof clockNights !== 'undefined') { clockNights = []; clockMeta = null; }
@@ -2424,7 +2429,7 @@ function reopenSurveyFromSettings() {
 
 function importNewDataFromSettings() {
   closeSettings();
-  sessionStorage.removeItem('cadence_session'); // stale cache — force fresh parse
+  localStorage.removeItem(KEY_CACHE); // stale cache — force fresh parse on next load
   $('file-input').click();
 }
 
@@ -2479,9 +2484,16 @@ function boot() {
     renderDashboard(window._dashData);
 
   } else if (onboarded) {
-    // ── Branch B: Returning user, new session — quick landing → import ───
-    // sessionStorage was cleared (tab closed), they need to re-upload
-    playLandingAnimation(true); // fast mode
+    // ── Branch B: Returning user, cache expired/missing — need to re-upload ──
+    // Skip all animation. Show landing screen with elements immediately visible
+    // so they can tap the upload button right away.
+    $('land-title').textContent   = 'Cadence';
+    $('land-line-1').style.opacity = '1';
+    $('land-line-2').style.opacity = '1';
+    $('land-privacy').style.opacity = '1';
+    $('land-btn').style.opacity    = '1';
+    $('land-howto').style.opacity  = '1';
+    if (!checkedInToday()) showModal('modal-checkin');
 
   } else {
     // ── Branch C: First-time user — full onboarding animation ────────────
