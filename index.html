@@ -2461,6 +2461,17 @@ function setActiveNav(key) {
   }
 }
 
+// ── Returning-user splash (fresh open, not a refresh) ─────────────────────
+async function playReturningSplash() {
+  // Only the particle canvas is visible — taglines/button stay at opacity:0
+  // Let the logo settle and show one breath before transitioning
+  await delay(2500);
+  await fadeToScreen('screen-dash');
+  const nav = $('bottom-nav');
+  if (nav) nav.classList.add('visible');
+  renderDashboard(window._dashData);
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────
 function boot() {
   const onboarded   = localStorage.getItem(KEY_ONBOARDED);
@@ -2468,18 +2479,29 @@ function boot() {
   console.log('[Cadence] boot — onboarded:', !!onboarded, '| session:', !!sessionData);
 
   if (onboarded && sessionData) {
-    // ── Branch A: Refresh — restore dashboard instantly ──────────────────
-    // sessionStorage survived the reload, data is ready, skip all screens
-    window._dashData = { ...sessionData, rhrRaw: [] }; // rhrRaw not cached; chart uses nights[].rhr
+    // Detect page refresh vs fresh open via Navigation Timing API
+    const navType = performance?.getEntriesByType?.('navigation')?.[0]?.type
+                 ?? (performance?.navigation?.type === 1 ? 'reload' : 'navigate');
+    const isRefresh = navType === 'reload';
+
+    // Pre-load data for both paths
+    window._dashData = { ...sessionData, rhrRaw: [] };
     clockMeta   = sessionData.meta;
     clockNights = sessionData.nights;
-    ['screen-landing','screen-import','screen-analysis'].forEach(id => {
-      const el = $(id); if (el) el.classList.remove('active');
-    });
-    $('screen-dash').classList.add('active');
-    const nav = $('bottom-nav');
-    if (nav) nav.classList.add('visible');
-    renderDashboard(window._dashData);
+
+    if (isRefresh) {
+      // ── Branch A-i: Page refresh — skip splash, go straight to dashboard ──
+      ['screen-landing','screen-import','screen-analysis'].forEach(id => {
+        const el = $(id); if (el) el.classList.remove('active');
+      });
+      $('screen-dash').classList.add('active');
+      const nav = $('bottom-nav');
+      if (nav) nav.classList.add('visible');
+      renderDashboard(window._dashData);
+    } else {
+      // ── Branch A-ii: Fresh open — brief particle logo splash then dashboard ──
+      playReturningSplash();
+    }
 
   } else if (onboarded) {
     // ── Branch B: Returning user, cache expired/missing — need to re-upload ──
