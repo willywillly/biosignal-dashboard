@@ -6,7 +6,7 @@
   <title>Cadence · Circadian Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -98,9 +98,14 @@
     display: flex; flex-direction: column; align-items: center;
     text-align: center; width: 100%; max-width: 400px; padding: 48px 24px;
   }
-  .land-title {
-    font-size: 64px; font-weight: 800; letter-spacing: -.04em; line-height: 1;
-    color: var(--text); margin-bottom: 32px; min-height: 72px;
+  #land-particle-wrap {
+    width: 100%;
+    margin-bottom: 32px;
+    overflow: visible;
+  }
+  #living-logo-canvas {
+    display: block;
+    touch-action: none;
   }
   .land-lines { margin-bottom: 20px; }
   .land-line {
@@ -526,7 +531,7 @@
 <!-- ═══════════════════════ SCREEN 0: AUTH ═══════════════════════ -->
 <div id="screen-landing" class="screen active">
   <div class="landing-inner" id="landing-inner">
-    <div class="land-title" id="land-title"></div>
+    <div id="land-particle-wrap"><canvas id="living-logo-canvas"></canvas></div>
     <div class="land-lines">
       <div class="land-line" id="land-line-1">Your body has a rhythm.</div>
       <div class="land-line" id="land-line-2">Now you can see it.</div>
@@ -1294,14 +1299,7 @@ async function fadeToScreen(toId) {
 
 // ── Landing animation ─────────────────────────────────────────────────────
 async function playLandingAnimation() {
-  const titleEl = $('land-title');
-  titleEl.textContent = '';
-
-  const word = 'Cadence';
-  for (let i = 0; i < word.length; i++) {
-    titleEl.textContent += word[i];
-    await delay(TIMING.typeSpeed);
-  }
+  // Particle canvas handles the logo — wait for particles to settle then reveal content
   await delay(TIMING.afterTitle);
 
   $('land-line-1').style.opacity = '1';
@@ -2487,7 +2485,6 @@ function boot() {
     // ── Branch B: Returning user, cache expired/missing — need to re-upload ──
     // Skip all animation. Show landing screen with elements immediately visible
     // so they can tap the upload button right away.
-    $('land-title').textContent   = 'Cadence';
     $('land-line-1').style.opacity = '1';
     $('land-line-2').style.opacity = '1';
     $('land-privacy').style.opacity = '1';
@@ -2500,6 +2497,138 @@ function boot() {
     playLandingAnimation(false);
   }
 }
+
+// ── Cadence Living Particle Logo ─────────────────────────────────────────
+(function() {
+  const _pc = document.getElementById('living-logo-canvas');
+  if (!_pc) return;
+  const _pctx = _pc.getContext('2d', { alpha: false });
+
+  let _particles = [];
+  const _mouse = { x: -9999, y: -9999, radius: 100 };
+  const _textToSpell = 'Cadence';
+  let _isSynced = false;
+  let _tempo = 0;
+
+  const _s = {
+    bg: '#F7F5F1', color: '#1a1a1a',
+    friction: 0.94, initialEase: 0.015, returnForce: 0.03,
+    density: 1.3, mouseForce: 1.2, cloudRadius: 8,
+    driftIntensity: 0.15, breathIntensity: 0.25, breathSpeed: 0.02
+  };
+
+  function _P(x, y) {
+    this.x  = x + (Math.random() - 0.5) * _s.cloudRadius;
+    this.y  = y + (Math.random() - 0.5) * _s.cloudRadius;
+    this.bx = x; this.by = y;
+    this.size = Math.random() * 1.8 + 0.8;
+    this.vx = 0; this.vy = 0; this.alpha = 0;
+    this.rnd = Math.random() * Math.PI * 2;
+  }
+  _P.prototype.draw = function() {
+    if (this.alpha <= 0) return;
+    _pctx.globalAlpha = this.alpha;
+    _pctx.fillStyle = _s.color;
+    _pctx.beginPath();
+    const cx = this.x, cy = this.y, s = this.size;
+    _pctx.moveTo(cx, cy - s * 1.5);
+    _pctx.quadraticCurveTo(cx, cy, cx + s * 1.5, cy);
+    _pctx.quadraticCurveTo(cx, cy, cx, cy + s * 1.5);
+    _pctx.quadraticCurveTo(cx, cy, cx - s * 1.5, cy);
+    _pctx.quadraticCurveTo(cx, cy, cx, cy - s * 1.5);
+    _pctx.fill();
+  };
+  _P.prototype.update = function() {
+    if (this.alpha < 1) this.alpha += 0.01;
+    let tx = this.bx, ty = this.by;
+    if (_isSynced) {
+      const breath = Math.sin(_tempo) * _s.breathIntensity;
+      const d = Math.sqrt(Math.pow(this.bx - _pc.width/2, 2) + Math.pow(this.by - _pc.height/2, 2)) || 1;
+      tx += ((this.bx - _pc.width/2)  / d) * breath * 15;
+      ty += ((this.by - _pc.height/2) / d) * breath * 15;
+      tx += Math.cos(_tempo + this.rnd) * _s.driftIntensity * 2;
+      ty += Math.sin(_tempo + this.rnd) * _s.driftIntensity * 2;
+    } else {
+      tx += Math.cos(_tempo + this.rnd) * _s.driftIntensity * 5;
+      ty += Math.sin(_tempo + this.rnd) * _s.driftIntensity * 5;
+    }
+    const dx = tx - this.x, dy = ty - this.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const f = _isSynced ? _s.returnForce : _s.initialEase;
+    if (dist > 0.01) { this.vx += (dx/dist)*(dist*f); this.vy += (dy/dist)*(dist*f); }
+    const mdx = _mouse.x - this.x, mdy = _mouse.y - this.y;
+    const md = Math.sqrt(mdx*mdx + mdy*mdy);
+    if (md < _mouse.radius && md > 0) {
+      const mf = (_mouse.radius - md) / _mouse.radius;
+      this.vx -= (mdx/md)*mf*_s.mouseForce;
+      this.vy -= (mdy/md)*mf*_s.mouseForce;
+    }
+    this.vx *= _s.friction; this.vy *= _s.friction;
+    this.x += this.vx; this.y += this.vy;
+  };
+
+  function _init() {
+    const wrap = document.getElementById('land-particle-wrap');
+    const cw = wrap.offsetWidth;
+    const fontSize = Math.min(cw / 4.2, 180);
+    _pc.width  = cw;
+    _pc.height = Math.round(fontSize * 1.6) + 80;
+
+    const off = document.createElement('canvas');
+    const offCtx = off.getContext('2d');
+    off.width = _pc.width; off.height = _pc.height;
+    offCtx.font = `700 ${fontSize}px 'Playfair Display', serif`;
+    offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
+    offCtx.fillStyle = 'black';
+    offCtx.fillText(_textToSpell, _pc.width / 2, _pc.height / 2);
+
+    const px = offCtx.getImageData(0, 0, off.width, off.height).data;
+    const step = Math.floor(_s.density * (cw < 768 ? 2 : 3));
+    _particles = [];
+    _isSynced = false;
+    for (let y = 0; y < off.height; y += step)
+      for (let x = 0; x < off.width; x += step)
+        if (px[(y * off.width + x) * 4 + 3] > 128)
+          _particles.push(new _P(x, y));
+
+    setTimeout(() => { _isSynced = true; }, 3500);
+  }
+
+  function _animate() {
+    _pctx.globalAlpha = 1;
+    _pctx.fillStyle = _s.bg;
+    _pctx.fillRect(0, 0, _pc.width, _pc.height);
+    _tempo += _s.breathSpeed;
+    for (let i = 0; i < _particles.length; i++) {
+      _particles[i].update();
+      _particles[i].draw();
+    }
+    requestAnimationFrame(_animate);
+  }
+
+  function _mouseCoords(clientX, clientY) {
+    const r = _pc.getBoundingClientRect();
+    return { x: clientX - r.left, y: clientY - r.top };
+  }
+
+  window.addEventListener('mousemove', (e) => {
+    const p = _mouseCoords(e.clientX, e.clientY);
+    _mouse.x = p.x; _mouse.y = p.y;
+  });
+  window.addEventListener('touchstart', (e) => {
+    const p = _mouseCoords(e.touches[0].clientX, e.touches[0].clientY);
+    _mouse.x = p.x; _mouse.y = p.y;
+  });
+  window.addEventListener('touchmove', (e) => {
+    const p = _mouseCoords(e.touches[0].clientX, e.touches[0].clientY);
+    _mouse.x = p.x; _mouse.y = p.y;
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('touchend', () => { _mouse.x = -9999; _mouse.y = -9999; });
+  window.addEventListener('resize', _init);
+
+  document.fonts.ready.then(() => { _init(); _animate(); });
+})();
 
 boot();
 </script>
