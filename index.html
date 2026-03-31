@@ -2637,16 +2637,15 @@ function boot() {
     const p = _mouseCoords(e.clientX, e.clientY);
     _mouse.x = p.x; _mouse.y = p.y;
   });
-  window.addEventListener('touchstart', (e) => {
+  _pc.addEventListener('touchstart', (e) => {
     const p = _mouseCoords(e.touches[0].clientX, e.touches[0].clientY);
     _mouse.x = p.x; _mouse.y = p.y;
-  });
-  window.addEventListener('touchmove', (e) => {
+  }, { passive: true });
+  _pc.addEventListener('touchmove', (e) => {
     const p = _mouseCoords(e.touches[0].clientX, e.touches[0].clientY);
     _mouse.x = p.x; _mouse.y = p.y;
-    if (e.cancelable) e.preventDefault();
-  }, { passive: false });
-  window.addEventListener('touchend', () => { _mouse.x = -9999; _mouse.y = -9999; });
+  }, { passive: true });
+  _pc.addEventListener('touchend', () => { _mouse.x = -9999; _mouse.y = -9999; }, { passive: true });
   window.addEventListener('resize', _init);
 
   document.fonts.ready.then(() => { _init(); _animate(); });
