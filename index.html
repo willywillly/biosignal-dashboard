@@ -405,8 +405,8 @@
   .corr-insight { padding: 16px 18px; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; }
 
   /* ── Modals ── */
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
-  .modal-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:32px 28px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .modal-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:32px 28px; width:100%; max-width:480px; margin:auto; }
   .modal-card-sm { max-width:420px; }
   .modal-logo { font-size:15px; font-weight:700; letter-spacing:-.02em; display:flex; align-items:center; gap:6px; margin-bottom:18px; }
   .modal-logo-dot { width:8px; height:8px; border-radius:50%; background:var(--lime); }
