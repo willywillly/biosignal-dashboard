@@ -6,7 +6,8 @@
   <title>Cadence · Circadian Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Manrope:wght@400;500;700&family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -239,13 +240,16 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* Header — centered title, icon buttons each side */
+  /* Header — logo left, avatar right */
   header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px; background: var(--bg);
+    padding: 16px 20px; background: rgba(247,245,241,0.8);
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0; z-index: 100; backdrop-filter: blur(8px);
   }
+  .logo-container { position: relative; }
+  #header-logo-canvas { display: block; width: 140px; height: 32px; touch-action: none; }
+  #hidden-text-ref { position: absolute; visibility: hidden; font-family: 'Noto Serif', serif; font-weight: 700; font-size: 20px; letter-spacing: 0.3em; }
   .header-menu-btn, .header-profile-btn {
     width: 40px; height: 40px; border-radius: 50%;
     background: none; border: none; cursor: pointer;
@@ -255,7 +259,8 @@
   }
   .header-menu-btn:active, .header-profile-btn:active { background: var(--surf2); }
   .header-profile-btn { background: var(--surf2); border: 1px solid var(--border); }
-  .header-logo { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text); }
+  .profile-avatar { width:100%; height:100%; background:#1A1917; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Manrope','Inter',sans-serif; font-size:13px; font-weight:700; color:#ffffff; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
   /* Dashboard gets bottom padding for fixed nav */
   #screen-dash { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -263,29 +268,31 @@
   /* Hero block */
   .hero-block { display: flex; flex-direction: column; align-items: center; padding: 40px 20px 24px; background: var(--bg); gap: 0; }
 
-  /* Block 1: Score */
-  .hero-score-section { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 28px; }
-  .hero-score-num {
-    font-size: 96px; font-weight: 800; line-height: 1; letter-spacing: -.04em;
-    color: var(--green); margin-bottom: 8px;
-    animation: score-breathe 4s ease-in-out infinite;
-  }
-  @keyframes score-breathe { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.03); } }
-  .hero-grade { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; color: var(--muted); margin-bottom: 12px; }
-  .hero-headline { font-size: 20px; font-weight: 400; color: var(--text); text-align: center; line-height: 1.45; max-width: 280px; }
+  /* Block 1: Arc score */
+  .living-arc-container { position: relative; width: min(340px, 100%); height: 260px; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 20px; }
+  #arc-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .arc-score-inner { position: relative; z-index: 10; text-align: center; padding-top: 48px; }
+  .arc-score-num { font-family: 'Noto Serif', Georgia, serif; font-size: 100px; line-height: 1; font-weight: 700; letter-spacing: -0.05em; color: #1A1917; }
+  .arc-score-grade { font-family: 'Manrope', 'Inter', sans-serif; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-top: -10px; color: #1A1917; }
+  .hero-headline { font-family: 'Noto Serif', Georgia, serif; font-size: 20px; font-weight: 400; color: var(--text); text-align: center; line-height: 1.45; max-width: 280px; margin-top: 16px; margin-bottom: 24px; }
 
-  /* Block 2: Cadence AI card */
-  .cadence-insight-wrap { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 12px; }
-  .cadence-insight-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .cadence-header-left { display: flex; align-items: center; gap: 7px; }
-  .cadence-card-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; }
-  .cadence-dot { width: 7px; height: 7px; border-radius: 50%; background: #7252D8; box-shadow: 0 0 8px #7252D8; animation: pulse-dot 2s ease-in-out infinite; }
-  @keyframes pulse-dot { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.8); } }
-  .cadence-expand-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--surf2); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--faint); }
-  .cadence-loading { display: flex; flex-direction: column; gap: 9px; padding: 4px 0 8px; }
-  .cadence-skel { height: 14px; background: var(--surf2); border-radius: 6px; animation: skel-pulse 1.5s ease-in-out infinite; }
-  @keyframes skel-pulse { 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
-  .cadence-error { font-size: 14px; color: var(--muted); line-height: 1.6; padding: 4px 0; }
+  /* Block 2: Insight card (hand-drawn oval style) */
+  .cadence-insight-wrap { width: 100%; background: rgba(255,255,255,0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 28px; margin-bottom: 12px; text-align: center; transition: transform 0.5s; }
+  .cadence-insight-wrap:hover { transform: translateY(-4px); }
+  .cadence-insight-title { font-family: 'Noto Serif', Georgia, serif; font-weight: 700; font-size: 18px; color: var(--text); text-decoration: underline; text-decoration-color: #98f994; text-decoration-thickness: 4px; text-underline-offset: 4px; margin-bottom: 16px; display: block; }
+  .cadence-insight-desc { font-family: 'Manrope', 'Inter', sans-serif; font-size: 13px; color: rgba(0,0,0,0.7); line-height: 1.65; margin-bottom: 14px; }
+  .cadence-insight-action { font-family: 'Noto Serif', Georgia, serif; font-style: italic; font-size: 13px; color: #1A1917; padding: 0 16px; line-height: 1.5; display: block; }
+
+  /* Block 3: Tonight recommendation card */
+  .tonight-card { width: 100%; background: #98f994; border-radius: 16px; padding: 24px; box-shadow: 0 10px 40px -10px rgba(152,249,148,0.5); position: relative; overflow: hidden; }
+  .tonight-label { font-family: 'Manrope', 'Inter', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(26,25,23,0.4); margin-bottom: 8px; }
+  .tonight-insight { font-family: 'Noto Serif', Georgia, serif; font-style: italic; font-size: 18px; line-height: 1.4; color: #1A1917; margin-bottom: 10px; }
+  .tonight-time { font-family: 'Manrope', 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #3a8a30; }
+  .tonight-refresh { position: absolute; bottom: 16px; right: 18px; font-size: 18px; color: rgba(26,25,23,0.2); line-height: 1; }
+  .cadence-local { padding: 2px 0 6px; }
+  .cadence-score-title { font-family:'Noto Serif',Georgia,serif; font-weight:700; font-size:15px; color:var(--text); text-decoration:underline; text-decoration-color:var(--lime); text-decoration-thickness:3px; text-underline-offset:4px; margin-bottom:10px; }
+  .cadence-score-body { font-family:'Manrope','Inter',sans-serif; font-size:13px; color:rgba(26,25,23,0.7); line-height:1.6; margin-bottom:12px; }
+  .cadence-score-action { font-family:'Noto Serif',Georgia,serif; font-style:italic; font-size:14px; color:var(--text); line-height:1.55; }
   .cadence-insight-body { font-size: 16px; color: var(--text); line-height: 1.75; font-weight: 400; }
   .cadence-divider { height: 1px; background: var(--border); margin: 16px 0; }
   .cadence-tonight-section { }
@@ -403,6 +410,86 @@
   .corr-value { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
   .corr-delta-value { font-size: 34px; font-weight: 800; color: var(--lime); letter-spacing: -.03em; }
   .corr-insight { padding: 16px 18px; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* ── Signal Cards ── */
+  .hand-drawn-border {
+    border-radius: 45% 55% 52% 48% / 54% 45% 55% 46%;
+    border: 1px solid rgba(26, 25, 23, 0.12);
+  }
+  .sc-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 20px 8px;
+  }
+  .sc-card {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 28px 28px 24px;
+    transition: transform 0.2s ease;
+  }
+  @media (hover: hover) {
+    .sc-card:hover { transform: translateY(-3px); }
+  }
+  .sc-label {
+    font-family: 'Manrope', 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .sc-value {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+  .sc-insight {
+    font-family: 'Noto Serif', Georgia, serif;
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .sc-trigger {
+    font-family: 'Manrope', 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--lime);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    padding: 0;
+    transition: color 0.15s;
+  }
+  .sc-trigger:hover { color: #6a9e20; }
+  .sc-arrow { display: inline-block; transition: transform 0.3s ease; }
+  .sc-trigger.open .sc-arrow { transform: rotate(90deg); }
+  .sc-expand {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+  .sc-expand.open { max-height: 500px; }
+  .sc-expand-inner {
+    padding-top: 16px;
+    border-top: 1px solid rgba(26, 25, 23, 0.08);
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .sc-expand-inner strong { color: var(--text); font-weight: 600; }
 
   /* ── Modals ── */
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
@@ -739,13 +826,11 @@
 <div id="screen-dash" class="screen">
 
 <header>
-  <button class="header-menu-btn" onclick="openSettings()" aria-label="Menu">
-    <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
-      <path d="M0 1h18M0 6.5h18M0 12h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-  </button>
-  <div class="header-logo">CADENCE</div>
-  <button class="header-profile-btn" onclick="openSettings()" aria-label="Profile">
+  <div class="logo-container">
+    <canvas id="header-logo-canvas"></canvas>
+    <div id="hidden-text-ref">CADENCE</div>
+  </div>
+  <button class="header-profile-btn" id="header-profile-btn" onclick="openSettings()" aria-label="Profile">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <circle cx="8" cy="5.5" r="2.5" fill="currentColor"/>
       <path d="M2 15c0-3.314 2.686-5.5 6-5.5s6 2.186 6 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
@@ -758,127 +843,58 @@
 <!-- ── Hero: score + Cadence AI card + action box (stacked vertical) ── -->
 <div class="hero-block">
 
-  <!-- Block 1: Score number -->
-  <div class="hero-score-section">
-    <div class="hero-score-num" id="rhythm-score">—</div>
-    <div class="hero-grade" id="rhythm-tag">—</div>
-    <div class="hero-headline" id="hero-headline">—</div>
-  </div>
-
-  <!-- Block 2: Cadence AI card -->
-  <div class="cadence-insight-wrap" id="cadence-insight-wrap">
-    <div class="cadence-insight-header">
-      <div class="cadence-header-left">
-        <div class="cadence-dot"></div>
-        <span class="cadence-card-label">CADENCE</span>
-      </div>
-      <button class="cadence-expand-btn" aria-label="Expand">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M1 5V1h4M8 1h4v4M12 8v4H8M5 12H1V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-    <div class="cadence-loading" id="cadence-loading">
-      <div class="cadence-skel" style="width:100%"></div>
-      <div class="cadence-skel" style="width:85%"></div>
-      <div class="cadence-skel" style="width:68%"></div>
-    </div>
-    <div class="cadence-insight-body" id="cadence-insight-body" style="display:none"></div>
-    <div class="cadence-error" id="cadence-error" style="display:none">
-      Cadence is having trouble connecting. Try reimporting your data.
-    </div>
-    <div class="cadence-tonight-section" id="cadence-tonight-section" style="display:none">
-      <div class="cadence-divider"></div>
-      <div class="cadence-tonight-label">TONIGHT</div>
-      <div class="cadence-tonight-time" id="cadence-tonight-time">—</div>
-      <div class="cadence-tonight-sub" id="cadence-tonight-sub"></div>
-      <div class="cadence-tonight-conf" id="cadence-tonight-conf" style="display:none">⚠ Low confidence — upload more nights for better accuracy</div>
+  <!-- Block 1: Arc score -->
+  <div class="living-arc-container">
+    <canvas id="arc-canvas"></canvas>
+    <div class="arc-score-inner">
+      <div class="arc-score-num" id="rhythm-score">—</div>
+      <div class="arc-score-grade" id="rhythm-tag">—</div>
     </div>
   </div>
+  <div class="hero-headline" id="hero-headline">—</div>
 
-  <!-- Block 3: Action box (always shown, computed from local data) -->
-  <div class="hero-action-box" id="hero-action-box" style="display:none"></div>
+  <!-- Block 2: Insight card -->
+  <div class="cadence-insight-wrap hand-drawn-border" id="cadence-insight-wrap">
+    <span class="cadence-insight-title">Explanation / Insight</span>
+    <p class="cadence-insight-desc">A weighted measure of your sleep timing consistency, recovery quality, and alignment with your body's natural rhythm.</p>
+    <span class="cadence-insight-action" id="cadence-worst-insight"></span>
+  </div>
+
+  <!-- Block 3: Tonight recommendation card -->
+  <!-- TODO: replace placeholder with /narrate response when AI insight pipeline is connected -->
+  <div class="tonight-card" id="hero-action-box" style="display:none">
+    <div class="tonight-label">TONIGHT'S FOCUS</div>
+    <div class="tonight-insight" id="tonight-insight">Dim your lights and close your screens. Your rhythm needs an earlier cue tonight.</div>
+    <div class="tonight-time" id="tonight-wind-time">Starting at —</div>
+    <span class="tonight-refresh material-symbols-outlined">refresh</span>
+  </div>
+
+  <!-- Orphan API elements (referenced by fetchCadenceInsight, kept in DOM but hidden) -->
+  <div style="display:none" aria-hidden="true">
+    <div id="cadence-loading"></div>
+    <div id="cadence-insight-body"></div>
+    <div id="cadence-error"></div>
+    <div id="cadence-tonight-section">
+      <div id="cadence-tonight-time"></div>
+      <div id="cadence-tonight-sub"></div>
+      <div id="cadence-tonight-conf"></div>
+    </div>
+  </div>
 
 </div>
 
 <!-- ── Accordion sections ── -->
 <div class="acc-sections">
 
-  <!-- Your Patterns -->
+  <!-- Your Signal -->
   <div class="acc-section open" id="acc-patterns">
     <div class="acc-header" onclick="toggleAcc('acc-patterns')">
-      <span class="acc-title">Your Patterns</span>
+      <span class="acc-title">Your Signal</span>
       <div class="acc-chevron"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     </div>
     <div class="acc-body">
       <div class="acc-inner">
-        <div class="acc-grid">
-          <div class="acc-card acc-card-full">
-            <div class="card-header">
-              <div class="card-title">Your Circadian Pattern</div>
-              <div class="card-meta" id="clock-meta"></div>
-            </div>
-            <div class="dual-wrap">
-              <div class="clock-panel">
-                <div class="clock-panel-label">Every night, mapped</div>
-                <canvas id="clock-canvas" class="clock"></canvas>
-                <div class="toggle-row" style="justify-content:center;margin-top:10px">
-                  <button class="toggle-btn active" id="btn-all" onclick="setClockMode('all')">All nights</button>
-                  <button class="toggle-btn" id="btn-consistent" onclick="setClockMode('consistent')">Consistent only</button>
-                </div>
-                <div class="clock-panel-sub">Tap any arc or dot for details</div>
-              </div>
-              <div class="clock-panel">
-                <div class="clock-panel-label">Your ideal schedule <span style="font-weight:400;color:var(--faint);font-size:9px;text-transform:none;letter-spacing:0">· built from your data</span></div>
-                <canvas id="blueprint-canvas" class="clock" style="cursor:default"></canvas>
-                <div class="bp-legend" id="bp-legend" style="margin-top:14px"></div>
-              </div>
-              <div class="clock-side">
-                <div class="legend-title">Sleep duration</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#D64B39"></div>&lt; 5 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#C4800C"></div>5 – 6 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#C89B0E"></div>6 – 7 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#3E9B32"></div>7 – 8 hrs (optimal)</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#2A7DC8"></div>8 – 9 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#7252D8"></div>&gt; 9 hrs</div>
-                <div class="legend-row" style="margin-top:8px"><div class="legend-dot" style="background:#C89B0E"></div>Workout session</div>
-              </div>
-            </div>
-            <div class="insight-box clock-insight-row" id="clock-insight"><span class="skel-text" style="width:90%"></span><span class="skel-text" style="width:75%"></span><span class="skel-text" style="width:55%"></span></div>
-          </div>
-
-          <div class="acc-card acc-card-2">
-            <div class="card-header"><div class="card-title">How consistent are you?</div></div>
-            <div class="c-stack" id="c-stack"></div>
-          </div>
-
-          <div class="acc-card acc-card-4">
-            <div class="card-header">
-              <div class="card-title">What the data actually shows</div>
-              <div class="card-meta">next-morning resting heart rate</div>
-            </div>
-            <div class="corr-grid">
-              <div class="corr-box">
-                <div class="corr-label">On-time nights</div>
-                <div class="corr-value" style="color:var(--green)" id="corr-best-rhr">—</div>
-                <div class="corr-sub">avg RHR · <span id="corr-best-n"></span> nights</div>
-                <div class="corr-sub" style="margin-top:5px;font-size:10px">Slept near usual time + 7–9h</div>
-              </div>
-              <div class="corr-box">
-                <div class="corr-label">Off-schedule nights</div>
-                <div class="corr-value" style="color:var(--red)" id="corr-rough-rhr">—</div>
-                <div class="corr-sub">avg RHR · <span id="corr-rough-n"></span> nights</div>
-                <div class="corr-sub" style="margin-top:5px;font-size:10px">Late bedtime or under 6h</div>
-              </div>
-              <div class="corr-box delta">
-                <div class="corr-label">The difference</div>
-                <div class="corr-delta-value" id="corr-delta">—</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:3px">bpm higher the next morning</div>
-              </div>
-            </div>
-            <div class="corr-insight" id="corr-insight"><span class="skel-text" style="width:88%"></span><span class="skel-text" style="width:70%"></span><span class="skel-text" style="width:50%"></span></div>
-          </div>
-        </div>
+        <div id="signal-cards-container" class="sc-container"></div>
       </div>
     </div>
   </div>
@@ -1606,10 +1622,11 @@ function _computeMeta(nights, hrReadings, workoutRaw) {
   workoutWindows.forEach((w, i) => { w.rank = i; });
 
   return {
-    totalNights:   nights.length,
+    totalNights:    nights.length,
     medianOnset,
-    avgSleepHrs:   parseFloat(avgSleepHrs.toFixed(3)),
-    onsetSdMin:    parseFloat(onsetSdMin.toFixed(2)),
+    avgSleepHrs:    parseFloat(avgSleepHrs.toFixed(3)),
+    medianDuration: parseFloat(_median(sleepHrArr).toFixed(3)),
+    onsetSdMin:     parseFloat(onsetSdMin.toFixed(2)),
     wakeSdMin:     parseFloat(wakeSdMin.toFixed(2)),
     avgWakeHour:   parseFloat(avgWakeHour.toFixed(4)),
     jetlagMin:     parseFloat(jetlagMin.toFixed(2)),
@@ -1999,36 +2016,321 @@ importDropZone.addEventListener('drop', e => {
   showDropError(result);
 });
 
+// ── Arc score particle animation ──────────────────────────────────────────
+(function() {
+  let _arcParticles = [], _arcFairy = [], _arcW = 0, _arcH = 0;
+  let _arcScore = 65, _arcRunning = false;
+
+  function _arcStar(ctx, x, y, size, opacity, score, fairy) {
+    const f = score / 100;
+    const r = Math.round(26 + (90 - 26) * f);
+    const g = Math.round(26 + (184 - 26) * f);
+    const b = Math.round(26 + (86 - 26) * f);
+    ctx.fillStyle = `rgba(${r},${g},${b},${fairy ? opacity * 0.3 : opacity})`;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      ctx.lineTo(x + Math.cos(i * Math.PI / 2) * size, y + Math.sin(i * Math.PI / 2) * size);
+      ctx.lineTo(x + Math.cos(i * Math.PI / 2 + Math.PI / 4) * (size / 3), y + Math.sin(i * Math.PI / 2 + Math.PI / 4) * (size / 3));
+    }
+    ctx.fill();
+  }
+
+  function _arcBuild(canvas, score) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    _arcW = rect.width; _arcH = rect.height;
+    canvas.width = _arcW * dpr; canvas.height = _arcH * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    _arcParticles = []; _arcFairy = [];
+    const cx = _arcW / 2, cy = _arcH * 0.7, radius = Math.min(_arcW, _arcH) * 0.42;
+    const startA = Math.PI * 0.9, endA = Math.PI * 2.1;
+    const currentEnd = startA + (endA - startA) * (score / 100);
+
+    for (let i = 0; i < 400; i++) {
+      const a = startA + Math.random() * (currentEnd - startA);
+      const r = radius + (Math.random() - 0.5) * 18;
+      _arcParticles.push({ bx: cx + Math.cos(a) * r, by: cy + Math.sin(a) * r, x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, size: Math.random() * 2.5 + 1, phase: Math.random() * Math.PI * 2, speed: 0.02 + Math.random() * 0.02 });
+    }
+    for (let i = 0; i < 150; i++) {
+      const a = startA + Math.random() * (endA - startA);
+      const r = radius + (Math.random() - 0.5) * 8;
+      _arcFairy.push({ bx: cx + Math.cos(a) * r, by: cy + Math.sin(a) * r, x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, size: Math.random() * 1.2 + 0.5, phase: Math.random() * Math.PI * 2, speed: 0.01 + Math.random() * 0.01 });
+    }
+    return ctx;
+  }
+
+  let _arcCtx = null;
+  function _arcLoop() {
+    if (!_arcCtx) return;
+    _arcCtx.clearRect(0, 0, _arcW, _arcH);
+    _arcFairy.forEach(p => {
+      p.phase += p.speed;
+      p.x = p.bx + Math.sin(p.phase) * 0.8;
+      p.y = p.by + Math.cos(p.phase) * 0.8;
+      _arcStar(_arcCtx, p.x, p.y, p.size, 0.1 + Math.sin(p.phase) * 0.1, _arcScore, true);
+    });
+    _arcParticles.forEach(p => {
+      p.phase += p.speed;
+      p.x = p.bx + Math.sin(p.phase) * 1.5;
+      p.y = p.by + Math.cos(p.phase) * 1.5;
+      _arcStar(_arcCtx, p.x, p.y, p.size, 0.4 + Math.sin(p.phase) * 0.3, _arcScore, false);
+    });
+    requestAnimationFrame(_arcLoop);
+  }
+
+  window.initArcCanvas = function(score) {
+    const canvas = document.getElementById('arc-canvas');
+    if (!canvas) return;
+    _arcScore = score;
+    _arcCtx = _arcBuild(canvas, score);
+    if (!_arcRunning) { _arcRunning = true; _arcLoop(); }
+  };
+})();
+
+// ── Header logo particle canvas ───────────────────────────────────────────
+(function() {
+  function initHeaderLogo() {
+    const canvas = document.getElementById('header-logo-canvas');
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const lw = rect.width, lh = rect.height;
+    if (!lw || !lh) return;
+    canvas.width = lw * dpr; canvas.height = lh * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    // Sample pixel positions from text
+    const off = document.createElement('canvas');
+    off.width = lw * dpr; off.height = lh * dpr;
+    const offCtx = off.getContext('2d');
+    offCtx.scale(dpr, dpr);
+    offCtx.font = `bold 20px "Noto Serif"`;
+    offCtx.letterSpacing = '4px';
+    offCtx.textAlign = 'center';
+    offCtx.textBaseline = 'middle';
+    offCtx.fillStyle = '#1A1917';
+    offCtx.fillText('CADENCE', lw / 2, lh / 2);
+    const px = offCtx.getImageData(0, 0, lw * dpr, lh * dpr).data;
+
+    const particles = [];
+    const step = Math.round(1.5 * dpr);
+    for (let y = 0; y < lh * dpr; y += step) {
+      for (let x = 0; x < lw * dpr; x += step) {
+        if (px[(y * lw * dpr + x) * 4 + 3] > 128) {
+          particles.push({ x: Math.random() * lw, y: Math.random() * lh, tx: x / dpr, ty: y / dpr, vx: 0, vy: 0 });
+        }
+      }
+    }
+
+    function drawStar(x, y, size, opacity) {
+      ctx.fillStyle = `rgba(26,25,23,${opacity})`;
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        ctx.lineTo(x + Math.cos(i * Math.PI / 2) * size, y + Math.sin(i * Math.PI / 2) * size);
+        ctx.lineTo(x + Math.cos(i * Math.PI / 2 + Math.PI / 4) * (size / 3), y + Math.sin(i * Math.PI / 2 + Math.PI / 4) * (size / 3));
+      }
+      ctx.fill();
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, lw, lh);
+      particles.forEach(p => {
+        p.vx += (p.tx - p.x) * 0.06;
+        p.vy += (p.ty - p.y) * 0.06;
+        p.vx *= 0.88; p.vy *= 0.88;
+        p.x += p.vx; p.y += p.vy;
+        drawStar(p.x, p.y, 1.2, 0.8);
+      });
+      requestAnimationFrame(loop);
+    }
+    loop();
+  }
+
+  // Init after fonts and layout are ready
+  if (document.readyState === 'complete') {
+    document.fonts.ready.then(initHeaderLogo);
+  } else {
+    window.addEventListener('load', () => document.fonts.ready.then(initHeaderLogo));
+  }
+  window.addEventListener('resize', () => setTimeout(initHeaderLogo, 100));
+})();
+
+// ── Profile avatar ────────────────────────────────────────────────────────
+function _updateProfileAvatar() {
+  const btn = $('header-profile-btn');
+  if (!btn) return;
+  const name = localStorage.getItem('cadence_name');
+  if (name && name.trim()) {
+    const initial = name.trim()[0].toUpperCase();
+    btn.innerHTML = `<div class="profile-avatar">${initial}</div>`;
+    btn.style.background = 'transparent';
+    btn.style.border = 'none';
+    btn.style.padding = '0';
+  }
+  // else: leave the default person SVG icon as-is
+}
+
+// ── Signal card accordion toggle ──────────────────────────────────────────
+function _scToggle(btn) {
+  const card   = btn.closest('.sc-card');
+  const expand = card.querySelector('.sc-expand');
+  const isOpen = expand.classList.contains('open');
+  // Close all open cards
+  document.querySelectorAll('#signal-cards-container .sc-expand.open').forEach(e => {
+    e.classList.remove('open');
+    e.closest('.sc-card').querySelector('.sc-trigger').classList.remove('open');
+  });
+  // Open this one if it was closed
+  if (!isOpen) {
+    expand.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+
+// ── Build signal cards ────────────────────────────────────────────────────
+function buildSignalCards(meta, nights, profile) {
+  const container = $('signal-cards-container');
+  if (!container) return;
+
+  function sc(label, value, valueColor, insight, expand) {
+    return `<div class="sc-card hand-drawn-border">
+      <div class="sc-label">${label}</div>
+      <div class="sc-value" style="color:${valueColor}">${value}</div>
+      <div class="sc-insight">${insight}</div>
+      <button class="sc-trigger" onclick="_scToggle(this)">
+        <span>See what this means</span>
+        <span class="sc-arrow">→</span>
+      </button>
+      <div class="sc-expand"><div class="sc-expand-inner">${expand}</div></div>
+    </div>`;
+  }
+
+  const cards = [];
+
+  // Card 1: Bedtime Drift
+  if (meta.onsetSdMin != null && !isNaN(meta.onsetSdMin)) {
+    const mins = Math.round(meta.onsetSdMin);
+    const col  = mins < 20 ? 'var(--green)' : mins < 40 ? 'var(--amber)' : 'var(--red)';
+    const feel = mins < 20 ? 'well-anchored — a strong circadian foundation.' : mins < 40 ? 'shifting night to night. Your body clock is still searching.' : 'swinging significantly. Irregular bedtimes weaken your rhythm.';
+    cards.push(sc(
+      'Bedtime Drift',
+      `±${mins} min`,
+      col,
+      `Your bedtime shifts by ${mins} minutes from night to night — ${feel}`,
+      `<strong>Why it matters:</strong> Bedtime variability above 30 minutes is independently linked to worse mood, cognitive performance, and metabolic health — even when total sleep time looks adequate. The brain uses consistent sleep onset as the primary anchor for your circadian clock. Target: keep variability under 20 minutes.`
+    ));
+  }
+
+  // Card 2: Social Jetlag
+  if (meta.jetlagMin != null && !isNaN(meta.jetlagMin)) {
+    const mins = Math.round(meta.jetlagMin);
+    const col  = mins < 30 ? 'var(--green)' : mins < 60 ? 'var(--amber)' : 'var(--red)';
+    const feel = mins < 30 ? 'minimal — your weekends barely shift your rhythm.' : mins < 60 ? 'moderate — a weekly rhythm disruption your body has to absorb.' : 'significant — you\'re giving yourself jet lag every weekend.';
+    cards.push(sc(
+      'Social Jetlag',
+      `${mins} min`,
+      col,
+      `On weekends you sleep ${mins} minutes later than weekdays. That weekly reset is ${feel}`,
+      `<strong>Social jetlag</strong> is the gap between your biological clock and your social schedule. Even 30 minutes of weekly drift measurably reduces insulin sensitivity, mood stability, and cognitive output. Athletes with high social jetlag consistently underperform peers with stable rhythms — even when total sleep hours are matched.`
+    ));
+  }
+
+  // Card 3: Workout Timing
+  const bestW = (meta.workoutWindows || []).find(w => w.rank === 0);
+  if (bestW && bestW.n >= 2) {
+    const rhrStr = bestW.avgRhr ? `averaging ${bestW.avgRhr.toFixed(0)} bpm` : 'the lowest in your data';
+    cards.push(sc(
+      'Best Workout Window',
+      bestW.label,
+      'var(--text)',
+      `${bestW.label} workouts correlate with your lowest resting HR the following day — ${rhrStr}.`,
+      `<strong>Exercise timing matters</strong> because cortisol and core body temperature peak naturally in the late morning — your muscles, joints, and cardiovascular system are primed to work. Training at the same time each day also reinforces your circadian rhythm, compounding the benefit over time. Your data from ${bestW.n} ${bestW.label.toLowerCase()} sessions backs this up.`
+    ));
+  }
+
+  // Card 4: 7-Day Sleep Debt
+  const last7 = nights.slice(-7);
+  if (last7.length >= 3) {
+    const baseline = meta.medianDuration || meta.avgSleepHrs;
+    const avgLast7 = last7.reduce((s, n) => s + n.sleepHrs, 0) / last7.length;
+    const debtHours = (baseline - avgLast7) * 7;
+    console.log('[Cadence] Sleep debt baseline: personal median =', baseline, 'hrs');
+    console.log('[Cadence] Sleep debt: 7-day avg =', avgLast7.toFixed(2), 'hrs, debt =', debtHours.toFixed(1), 'hrs');
+    const absStr = Math.abs(debtHours).toFixed(1);
+    const col    = debtHours > 0.5 ? 'var(--red)' : debtHours < -0.5 ? 'var(--green)' : 'var(--amber)';
+    const valStr = debtHours > 0.5 ? `−${absStr} hrs` : debtHours < -0.5 ? `+${absStr} hrs` : 'On target';
+    const feel   = debtHours > 0.5
+      ? `You're ${absStr} hours below your personal sleep baseline this week. That deficit compounds daily — your brain is working harder than it needs to.`
+      : debtHours < -0.5
+      ? `You're ${absStr} hours above your personal baseline this week — a healthy buffer that supports recovery and performance.`
+      : `You're tracking right at your personal sleep baseline this week. Keep the consistency going.`;
+    cards.push(sc(
+      '7-Day Sleep Debt',
+      valStr,
+      col,
+      feel,
+      `<strong>Sleep debt is cumulative.</strong> Missing one hour each night for a week creates the same cognitive impairment as a full night with no sleep — but it happens gradually, so you adapt and stop noticing it. Recovery requires actual extra sleep, not just "normal" nights. Your brain's prefrontal cortex — responsible for decision-making and emotional regulation — is the first to suffer.`
+    ));
+  }
+
+  container.innerHTML = cards.join('');
+
+  // Return the worst-severity action line for the hero card
+  const worstAction = _scWorstAction(meta, nights);
+  return { worstAction };
+}
+
+function _scWorstAction(meta, nights) {
+  // Score each signal dimension by severity (higher = worse)
+  let worst = { severity: -1, action: '' };
+
+  function check(severity, action) {
+    if (severity > worst.severity) { worst = { severity, action }; }
+  }
+
+  if (meta.onsetSdMin != null && !isNaN(meta.onsetSdMin)) {
+    const s = meta.onsetSdMin / 90; // 0–1 scale
+    check(s, meta.onsetSdMin >= 40
+      ? `Your bedtime swings ±${Math.round(meta.onsetSdMin)} min night to night. Anchor one consistent time and hold it for 7 days.`
+      : `Tighten your bedtime window — ${Math.round(meta.onsetSdMin)} min of drift is still costing you rhythm points.`);
+  }
+  if (meta.jetlagMin != null && !isNaN(meta.jetlagMin)) {
+    const s = meta.jetlagMin / 120;
+    check(s, meta.jetlagMin >= 60
+      ? `${Math.round(meta.jetlagMin)} min of social jetlag weekly. Try sleeping within 30 min of your usual time on weekends.`
+      : `Your weekend schedule drifts ${Math.round(meta.jetlagMin)} min from weekdays — a small adjustment makes a measurable difference.`);
+  }
+  const last7 = nights.slice(-7);
+  if (last7.length >= 3) {
+    const baseline = meta.medianDuration || meta.avgSleepHrs;
+    const avgLast7 = last7.reduce((s, n) => s + n.sleepHrs, 0) / last7.length;
+    const debtHours = (baseline - avgLast7) * 7;
+    if (debtHours > 0.5) {
+      const s = Math.min(debtHours / 10, 1);
+      check(s, `You're running a ${debtHours.toFixed(1)}-hour sleep deficit this week. Prioritize an extra 30 minutes tonight.`);
+    }
+  }
+
+  return worst.action || 'Focus on going to bed at the same time every night — consistency is the highest-leverage change you can make.';
+}
+
 // ── Dashboard render ───────────────────────────────────────────────────────
 function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   const score=rhythmScore(meta), rm=rhythmMeta(score);
   console.log(`[Cadence] UI v2 loaded`);
   console.log(`[Cadence] Score: ${score} Grade: ${rm.label}`);
 
-  // ── Hero: big number ──
-  const scoreEl=$('rhythm-score');
-  scoreEl.textContent=score;
-  scoreEl.style.color=rm.color;
-  $('rhythm-tag').textContent=rm.label;
-  $('hero-headline').textContent=rm.headline;
+  // ── Hero: arc score ──
+  $('rhythm-score').textContent = score;
+  $('rhythm-tag').textContent = rm.label;
+  $('hero-headline').textContent = rm.headline;
+  initArcCanvas(score);
 
   const bestW=meta.workoutWindows?.[0];
-  const windDown=fmtHour((meta.medianOnset-1.5)%24);
-  const targetBed=fmtHour((meta.medianOnset+0.5)%24);
-
-  // ── Action bar ──
-  const actionEl=$('hero-action-box');
-  if(actionEl){
-    actionEl.innerHTML=`
-      <span class="hero-action-text">Turn on blue light filters at ${windDown}.</span>
-      <span class="hero-action-icon">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M11 1v2M11 19v2M1 11h2M19 11h2M3.9 3.9l1.4 1.4M16.7 16.7l1.4 1.4M3.9 18.1l1.4-1.4M16.7 5.3l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </span>`;
-    actionEl.style.display='flex';
-  }
+  const windDown = fmtHour(meta.medianOnset - 0.75);
 
   // ── Wind-down sub-label pre-populated for when API returns ──
   const subEl=$('cadence-tonight-sub');
@@ -2051,40 +2353,23 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
     setTimeout(()=>$(`stat-${i}`).classList.add('in'), 100+i*120);
   });
 
-  // ── Clocks ──
-  $('clock-meta').textContent=`${meta.totalNights} nights · ${meta.workoutTagged?.length||0} workouts`;
-  const clockEl=$('clock-canvas'); clockEl._logicalSize=240;
-  drawPatternClock(clockEl,nights,meta,meta.workoutTagged,'all');
-  setupClockHover(clockEl);
-  const bpEl=$('blueprint-canvas'); bpEl._logicalSize=240;
-  drawBlueprintClock(bpEl,meta);
+  // ── Signal Cards ──
+  const { worstAction } = buildSignalCards(meta, nights, getProfile());
 
-  // ── Clock insight ──
-  $('clock-insight').innerHTML=`The green band on the left clock is your ±30 min sweet spot — centered on <strong>${fmtHour(meta.medianOnset%24)}</strong>. Arcs that land in that band are your most consistent nights.${bestW?` Your blueprint (right) shows <strong>${bestW.label.toLowerCase()} workouts</strong> led to the lowest next-morning heart rate (${bestW.avgRhrControlled} bpm) — your body recovers best when you train in that window.`:''}
-    <div class="rec">Tonight: asleep by <span>${targetBed}</span> &nbsp;·&nbsp; Start winding down at <span>${windDown}</span></div>`;
+  // ── Insight card: worst action line ──
+  const worstEl = $('cadence-worst-insight');
+  if (worstEl) worstEl.textContent = worstAction;
 
-  // ── Consistency ──
-  function cMetric(label,val,unit,desc,min){
-    const g=grade(min);
-    return`<div class="c-metric"><div class="c-top"><div><div class="c-label">${label}</div><div><span class="c-value">${val}</span><span class="c-unit"> ${unit}</span></div></div><span class="grade ${g.cls}">${g.label}</span></div><div class="c-bar-track"><div class="c-bar-fill" style="width:${g.pct}%;background:${gradeColor(min)}"></div></div><div class="c-scale"><span>0</span><span>30</span><span>60</span><span>90+</span></div><div class="c-desc">${desc}</div></div>`;
+  // ── Tonight recommendation card ──
+  const actionEl = $('hero-action-box');
+  if (actionEl) {
+    const windDownEl = $('tonight-wind-time');
+    if (windDownEl) windDownEl.textContent = `Starting at ${windDown}`;
+    actionEl.style.display = 'block';
   }
-  const wrkHrs=workoutRaw.map(w=>parseInt(w.startDate.slice(11,13))+parseInt(w.startDate.slice(14,16))/60);
-  const wrkSD=wrkHrs.length>1?stddev(wrkHrs)*60:null;
-  $('c-stack').innerHTML=
-    cMetric('Bedtime swings by',Math.round(meta.onsetSdMin),'min','Night to night. Under 30 min means your body clock is anchored.',meta.onsetSdMin)+
-    cMetric('Wake time swings by',Math.round(meta.wakeSdMin),'min','Consistent wake time is the strongest circadian anchor you have.',meta.wakeSdMin)+
-    (wrkSD?cMetric('Workout timing swings by',Math.round(wrkSD),'min','Training at the same time each day reinforces your rhythm.',wrkSD):'');
 
-  // ── Correlation ──
-  if(meta.bestRhr&&meta.roughRhr){
-    $('corr-best-rhr').textContent=meta.bestRhr.toFixed(1)+' bpm';
-    $('corr-rough-rhr').textContent=meta.roughRhr.toFixed(1)+' bpm';
-    $('corr-best-n').textContent=meta.bestN;
-    $('corr-rough-n').textContent=meta.roughN;
-    $('corr-delta').textContent='+'+meta.deltaRhr;
-    $('corr-insight').innerHTML=`<strong>When you sleep at your usual time and get enough rest, your heart works measurably less hard the next morning.</strong> That +${meta.deltaRhr} bpm is your body's recovery signal — a lower resting heart rate means your cardiovascular system had a full night to repair. WHOOP and most recovery research treat any elevation above your personal baseline as incomplete recovery, which shows up as reduced focus and output throughout the day.
-      <div class="corr-cta">Your target window: <strong style="margin:0 4px">${fmtHour((meta.medianOnset-0.5)%24)} – ${fmtHour((meta.medianOnset+0.5)%24)}</strong> — that's when your body expects to be asleep.</div>`;
-  }
+  // ── Profile avatar ──
+  _updateProfileAvatar();
 
   // ── Sleep history ──
   $('b-sleep').textContent=`${meta.totalNights} nights`;
@@ -2309,8 +2594,8 @@ async function fetchCadenceInsight(meta, score) {
   // Save this session to the rolling context log before sending
   saveSessionSummary(score, meta);
 
-  // Show skeleton loading state
-  $('cadence-loading').style.display = 'flex';
+  // Local content is already showing — just reset API-specific sections
+  $('cadence-loading').style.display = 'none';
   $('cadence-insight-body').style.display = 'none';
   $('cadence-tonight-section').style.display = 'none';
   $('cadence-error').style.display = 'none';
@@ -2379,9 +2664,8 @@ async function fetchCadenceInsight(meta, score) {
     console.log('[Cadence] Cadence card: success');
 
   } catch (err) {
-    // Both attempts failed — show soft message, never "Load failed"
+    // Both attempts failed — local content is already showing, no extra error needed
     $('cadence-loading').style.display = 'none';
-    $('cadence-error').style.display = '';
     console.error('[Cadence] API error (both attempts failed):', err.message);
     console.log('[Cadence] Cadence card: error');
   }
