@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadence Debug — Upload Parser</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d0d0d;
+      color: #e8e8e8;
+      padding: 20px 16px 48px;
+      min-height: 100vh;
+    }
+    .header {
+      margin-bottom: 24px;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .header p {
+      font-size: 12px;
+      color: #666;
+    }
+    .warning {
+      background: #2a1a00;
+      border: 1px solid #664400;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #ffaa44;
+      margin-bottom: 20px;
+    }
+    .upload-area {
+      margin-bottom: 20px;
+    }
+    label.upload-btn {
+      display: inline-block;
+      background: #1a1a1a;
+      border: 1.5px solid #444;
+      border-radius: 10px;
+      padding: 14px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #e8e8e8;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      width: 100%;
+      text-align: center;
+    }
+    label.upload-btn:active { background: #222; }
+    #file-input { display: none; }
+    #status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #888;
+      min-height: 18px;
+    }
+    .log-wrap {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .log-wrap.visible { display: block; }
+    .log-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    #log-lines {
+      font-family: 'Menlo', 'SF Mono', 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .log-line { display: flex; gap: 6px; align-items: baseline; }
+    .log-num {
+      color: #444;
+      min-width: 28px;
+      flex-shrink: 0;
+      font-size: 11px;
+      padding-top: 1px;
+    }
+    .log-text { flex: 1; word-break: break-all; color: #ccc; }
+    .log-ok  { color: #4cff7e; font-weight: 700; flex-shrink: 0; }
+    .log-err { color: #ff5555; font-weight: 700; flex-shrink: 0; }
+    .log-info { color: #7799ff; flex-shrink: 0; }
+    .log-line.error .log-text { color: #ff8080; }
+    .log-line.error-stack .log-text {
+      color: #ff5555;
+      font-size: 10px;
+      white-space: pre-wrap;
+      opacity: 0.85;
+    }
+
+    .meta-wrap {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .meta-wrap.visible { display: block; }
+    .meta-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    #meta-json {
+      font-family: 'Menlo', 'SF Mono', 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      color: #aad4ff;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button.action-btn {
+      background: #1a1a1a;
+      border: 1.5px solid #444;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e8e8e8;
+      cursor: pointer;
+      flex: 1;
+      min-width: 140px;
+    }
+    button.action-btn:active { background: #222; }
+    #copy-btn { display: none; }
+    #reset-btn { display: none; }
+    #copy-feedback {
+      font-size: 12px;
+      color: #4cff7e;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Cadence — Upload Debug</h1>
+  <p>Internal diagnostics · Not linked from the main app</p>
+</div>
+
+<div class="warning">
+  ⚠ Internal use only. Visit cadencedashboard.vercel.app/debug-upload.html, upload your file, and share the log output.
+</div>
+
+<div class="upload-area">
+  <label class="upload-btn" for="file-input">
+    Tap to select Apple Health export (.zip or .xml)
+  </label>
+  <input type="file" id="file-input" accept=".zip,.xml">
+  <div id="status"></div>
+</div>
+
+<div class="log-wrap" id="log-wrap">
+  <div class="log-title">Parse Log</div>
+  <div id="log-lines"></div>
+</div>
+
+<div class="meta-wrap" id="meta-wrap">
+  <div class="meta-title">Meta Object (summary)</div>
+  <pre id="meta-json"></pre>
+</div>
+
+<div class="actions">
+  <button class="action-btn" id="copy-btn" onclick="copyLog()">Copy full log</button>
+  <button class="action-btn" id="reset-btn" onclick="resetPage()">Try another file</button>
+</div>
+<div id="copy-feedback"></div>
+
+<script>
+// ─── Parser helpers — exact copies from index.html ──────────────────────────
+
+function _getAttr(tag, name) {
+  const needle = ` ${name}="`;
+  const i = tag.indexOf(needle);
+  if (i === -1) return null;
+  const vs = i + needle.length;
+  const ve = tag.indexOf('"', vs);
+  return ve === -1 ? null : tag.slice(vs, ve);
+}
+
+function* _iterElems(xml, tagName) {
+  const open = `<${tagName} `;
+  let pos = 0;
+  while (true) {
+    const s = xml.indexOf(open, pos);
+    if (s === -1) break;
+    const e = xml.indexOf('/>', s);
+    if (e === -1) break;
+    yield xml.slice(s, e + 2);
+    pos = e + 2;
+  }
+}
+
+function _parseAHDate(str) {
+  if (!str) return null;
+  const t = str.replace(' ', 'T');
+  const spIdx = t.lastIndexOf(' ');
+  if (spIdx !== -1) {
+    const tz  = t.slice(spIdx + 1);
+    const tz8 = tz.slice(0, 3) + ':' + tz.slice(3);
+    return new Date(t.slice(0, spIdx) + tz8);
+  }
+  return new Date(t);
+}
+
+function _median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function _stddev(arr) {
+  if (arr.length < 2) return 0;
+  const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
+  return Math.sqrt(arr.map(v => (v - mean) ** 2).reduce((s, v) => s + v, 0) / arr.length);
+}
+
+function _fmtAHDate(d) {
+  const pad = n => String(n).padStart(2, '0');
+  const off  = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const oh   = pad(Math.floor(Math.abs(off) / 60));
+  const om   = pad(Math.abs(off) % 60);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ` +
+         `${sign}${oh}${om}`;
+}
+
+function _buildNight(group) {
+  const onset   = group[0].start;
+  const wake    = group[group.length - 1].end;
+  const sleepMs = group.reduce((s, g) => s + (g.end - g.start), 0);
+  if (sleepMs < 30 * 60 * 1000) return null;
+  const onsetHour = onset.getHours() + onset.getMinutes() / 60;
+  const wakeHour  = wake.getHours()  + wake.getMinutes()  / 60;
+  const onsetNorm = onsetHour < 12 ? onsetHour + 24 : onsetHour;
+  return {
+    onsetStr:    _fmtAHDate(onset),
+    wakeStr:     _fmtAHDate(wake),
+    wakeDate:    wake.toISOString().slice(0, 10),
+    onsetHour:   parseFloat(onsetHour.toFixed(4)),
+    wakeHour:    parseFloat(wakeHour.toFixed(4)),
+    onsetNorm:   parseFloat(onsetNorm.toFixed(4)),
+    sleepHrs:    parseFloat((sleepMs / 3600000).toFixed(3)),
+    dayOfWeek:   wake.getDay(),
+    deviationMin: 0,
+    rhr:         null,
+    _onsetMs:    onset.getTime(),
+    _wakeMs:     wake.getTime(),
+  };
+}
+
+function _computeMeta(nights, hrReadings, workoutRaw, extra) {
+  const onsetNorms = nights.map(n => n.onsetNorm);
+  const wakeHours  = nights.map(n => n.wakeHour);
+  const sleepHrArr = nights.map(n => n.sleepHrs);
+  const medianOnset = _median(onsetNorms);
+  const avgWakeHour = wakeHours.reduce((s, v) => s + v, 0) / wakeHours.length;
+  const avgSleepHrs = sleepHrArr.reduce((s, v) => s + v, 0) / sleepHrArr.length;
+  const onsetSdMin  = _stddev(onsetNorms) * 60;
+  const wakeSdMin   = _stddev(wakeHours)  * 60;
+  const wdO = nights.filter(n => n.dayOfWeek >= 1 && n.dayOfWeek <= 5).map(n => n.onsetNorm);
+  const weO = nights.filter(n => n.dayOfWeek === 0 || n.dayOfWeek === 6).map(n => n.onsetNorm);
+  const jetlagMin = (wdO.length > 0 && weO.length > 0)
+    ? Math.abs(_median(weO) - _median(wdO)) * 60 : 0;
+  const withRhr    = nights.filter(n => n.rhr !== null);
+  const consistent = withRhr.filter(n => Math.abs(n.deviationMin) < 30 && n.sleepHrs >= 7);
+  const rough      = withRhr.filter(n => Math.abs(n.deviationMin) > 60 || n.sleepHrs < 6);
+  const avgRhrArr  = arr => arr.reduce((s, n) => s + n.rhr, 0) / arr.length;
+  const bestRhr    = consistent.length >= 3 ? parseFloat(avgRhrArr(consistent).toFixed(2)) : null;
+  const roughRhr   = rough.length >= 3      ? parseFloat(avgRhrArr(rough).toFixed(2))      : null;
+  const deltaRhr   = (bestRhr && roughRhr)  ? parseFloat((roughRhr - bestRhr).toFixed(2))  : null;
+  const rhrByDate  = {};
+  for (const n of nights) { if (n.rhr !== null) rhrByDate[n.wakeDate] = n.rhr; }
+  const workoutTagged = [];
+  for (const w of workoutRaw) {
+    const start = _parseAHDate(w.startDate);
+    if (!start) continue;
+    const hour = start.getHours() + start.getMinutes() / 60;
+    const dur  = parseFloat(w.duration) || 0;
+    const dateStr  = start.toISOString().slice(0, 10);
+    const nextDate = new Date(start.getTime() + 86400000).toISOString().slice(0, 10);
+    const rhrNext  = rhrByDate[nextDate] ?? rhrByDate[dateStr] ?? null;
+    const nightAfter = nights.find(n => n.wakeDate === nextDate || n.wakeDate === dateStr);
+    workoutTagged.push({ hour: parseFloat(hour.toFixed(1)), type: (w.workoutActivityType||'').replace('HKWorkoutActivityType',''), dur: parseFloat(dur.toFixed(1)), rhrNext, sleepHrs: nightAfter?.sleepHrs ?? null, date: dateStr });
+  }
+  const WIN_DEFS = [
+    { label: 'Morning',   startHour: 6,  endHour: 11 },
+    { label: 'Midday',    startHour: 11, endHour: 14 },
+    { label: 'Afternoon', startHour: 14, endHour: 17 },
+    { label: 'Evening',   startHour: 17, endHour: 22 },
+  ];
+  const workoutWindows = [];
+  for (const win of WIN_DEFS) {
+    const tagged     = workoutTagged.filter(w => w.hour >= win.startHour && w.hour < win.endHour);
+    const controlled = tagged.filter(w => w.rhrNext !== null && (w.sleepHrs ?? 0) >= 6);
+    if (tagged.length < 3) continue;
+    const withRhrW   = tagged.filter(w => w.rhrNext !== null);
+    const avgRhrVal  = withRhrW.length   > 0 ? withRhrW.reduce((s,w)=>s+w.rhrNext,0)/withRhrW.length     : null;
+    const avgRhrCtrl = controlled.length > 0 ? controlled.reduce((s,w)=>s+w.rhrNext,0)/controlled.length : null;
+    workoutWindows.push({ label: win.label, startHour: win.startHour, endHour: win.endHour, n: tagged.length, nControlled: controlled.length, avgRhr: avgRhrVal !== null ? parseFloat(avgRhrVal.toFixed(2)) : null, avgRhrControlled: avgRhrCtrl !== null ? parseFloat(avgRhrCtrl.toFixed(2)) : null });
+  }
+  workoutWindows.sort((a,b)=>(a.avgRhrControlled??a.avgRhr??999)-(b.avgRhrControlled??b.avgRhr??999));
+  workoutWindows.forEach((w,i)=>{w.rank=i;});
+  const { stepsRaw=[], activeEnergyRaw=[], mindfulRaw=[], weightRaw=[], hrvRaw=[], hasSleepStages=false } = extra || {};
+  function _sumByDay(records) {
+    const byDay = {};
+    for (const r of records) { const d=r.startDate.slice(0,10); byDay[d]=(byDay[d]||0)+r.value; }
+    return byDay;
+  }
+  const stepsByDay      = _sumByDay(stepsRaw);
+  const stepVals        = Object.values(stepsByDay);
+  const avgDailySteps   = stepVals.length > 0 ? Math.round(stepVals.reduce((s,v)=>s+v,0)/stepVals.length) : null;
+  const lowActivityDays = Object.entries(stepsByDay).filter(([,v])=>v<3000).map(([d])=>d);
+  const energyVals        = Object.values(_sumByDay(activeEnergyRaw));
+  const avgActiveCalories = energyVals.length > 0 ? Math.round(energyVals.reduce((s,v)=>s+v,0)/energyVals.length) : null;
+  const avgHRV = hrvRaw.length > 0 ? parseFloat((hrvRaw.reduce((s,r)=>s+r.value,0)/hrvRaw.length).toFixed(1)) : null;
+  const mindfulByDay = {};
+  for (const r of mindfulRaw) { const d=r.startDate.slice(0,10); mindfulByDay[d]=(mindfulByDay[d]||0)+r.durationMin; }
+  const mindfulVals       = Object.values(mindfulByDay);
+  const avgMindfulMinutes = mindfulVals.length > 0 ? parseFloat((mindfulVals.reduce((s,v)=>s+v,0)/mindfulVals.length).toFixed(1)) : null;
+  let weightTrend = null;
+  if (weightRaw.length >= 4) {
+    const ws=[ ...weightRaw].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+    const half=Math.floor(ws.length/2);
+    const avgF=ws.slice(0,half).reduce((s,r)=>s+r.value,0)/half;
+    const avgL=ws.slice(-half).reduce((s,r)=>s+r.value,0)/half;
+    weightTrend=avgL-avgF>0.5?'gaining':avgL-avgF<-0.5?'losing':'stable';
+  }
+  const nightsWithRhrArr = nights.filter(n=>n.rhr!==null);
+  let rhrTrend = null;
+  if (nightsWithRhrArr.length >= 6) {
+    const half=Math.floor(nightsWithRhrArr.length/2);
+    const avgF=nightsWithRhrArr.slice(0,half).reduce((s,n)=>s+n.rhr,0)/half;
+    const avgL=nightsWithRhrArr.slice(-half).reduce((s,n)=>s+n.rhr,0)/half;
+    const diff=avgL-avgF;
+    rhrTrend=diff<-1?'improving':diff>1?'degrading':'stable';
+  }
+  const allSrcNames=[...hrReadings.map(h=>h.sourceName||''),...workoutRaw.map(w=>w.sourceName||'')];
+  const hasWatch=allSrcNames.some(s=>/watch/i.test(s));
+  const hasWhoop=allSrcNames.some(s=>/whoop/i.test(s));
+  const hasWorkouts=workoutRaw.length>0;
+  const hasSteps=stepsRaw.length>0;
+  const hasHRVData=hrvRaw.length>0;
+  const allDates=[...nights.map(n=>n.wakeDate),...Object.keys(stepsByDay),...Object.keys(mindfulByDay)].filter(Boolean);
+  let daysAvailable=0;
+  if (allDates.length>0){const ds=[...allDates].sort();daysAvailable=Math.round((new Date(ds[ds.length-1])-new Date(ds[0]))/86400000)+1;}
+  const dataProfile={hasWatch,hasWhoop,hasSleepStages,hasHRV:hasHRVData,hasWorkouts,hasSteps,primarySleepSource:hasSleepStages?'Asleep':nights.length>0?'InBed':'none',nightsAvailable:nights.length,daysAvailable};
+  return {
+    totalNights:nights.length, medianOnset, avgSleepHrs:parseFloat(avgSleepHrs.toFixed(3)),
+    medianDuration:parseFloat(_median(sleepHrArr).toFixed(3)), onsetSdMin:parseFloat(onsetSdMin.toFixed(2)),
+    wakeSdMin:parseFloat(wakeSdMin.toFixed(2)), avgWakeHour:parseFloat(avgWakeHour.toFixed(4)),
+    jetlagMin:parseFloat(jetlagMin.toFixed(2)), bestRhr, roughRhr, bestN:consistent.length,
+    roughN:rough.length, deltaRhr, workoutWindows:workoutWindows.length>0?workoutWindows:null,
+    workoutTagged:workoutTagged.length>0?workoutTagged:null,
+    avgDailySteps, avgActiveCalories, lowActivityDays, avgHRV, avgMindfulMinutes,
+    weightTrend, rhrTrend, dataProfile,
+  };
+}
+
+// ─── Debug UI helpers ────────────────────────────────────────────────────────
+
+let _logStep = 0;
+let _logBuffer = [];
+
+function logLine(text, status, extraClass) {
+  _logStep++;
+  const num = `[${_logStep}]`;
+  const marker = status === 'ok'   ? '✓' :
+                 status === 'err'  ? '✗' :
+                 status === 'info' ? '·' : '';
+  const cls = status === 'ok' ? 'log-ok' : status === 'err' ? 'log-err' : 'log-info';
+
+  const plain = `${num} ${text}${marker ? ' ' + marker : ''}`;
+  _logBuffer.push(plain);
+
+  const wrap = document.getElementById('log-lines');
+  const div  = document.createElement('div');
+  div.className = 'log-line' + (extraClass ? ' ' + extraClass : '');
+  div.innerHTML =
+    `<span class="log-num">${num}</span>` +
+    `<span class="log-text">${escHtml(text)}</span>` +
+    (marker ? `<span class="${cls}">${marker}</span>` : '');
+  wrap.appendChild(div);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showLog() {
+  document.getElementById('log-wrap').classList.add('visible');
+}
+
+function showMeta(meta) {
+  // Show a cleaned version — drop huge arrays to keep it readable
+  const display = Object.assign({}, meta);
+  if (display.workoutTagged && display.workoutTagged.length > 5)
+    display.workoutTagged = `[${display.workoutTagged.length} entries — truncated]`;
+  if (display.lowActivityDays && display.lowActivityDays.length > 10)
+    display.lowActivityDays = `[${display.lowActivityDays.length} days — truncated]`;
+  document.getElementById('meta-json').textContent = JSON.stringify(display, null, 2);
+  document.getElementById('meta-wrap').classList.add('visible');
+  _logBuffer.push('\n--- META ---\n' + JSON.stringify(display, null, 2));
+}
+
+function showActions() {
+  document.getElementById('copy-btn').style.display = '';
+  document.getElementById('reset-btn').style.display = '';
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+function copyLog() {
+  const text = _logBuffer.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('copy-feedback').textContent = 'Copied to clipboard ✓';
+    setTimeout(() => { document.getElementById('copy-feedback').textContent = ''; }, 3000);
+  }).catch(() => {
+    // Fallback for older iOS
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    document.getElementById('copy-feedback').textContent = 'Copied ✓';
+    setTimeout(() => { document.getElementById('copy-feedback').textContent = ''; }, 3000);
+  });
+}
+
+function resetPage() {
+  _logStep = 0;
+  _logBuffer = [];
+  document.getElementById('log-lines').innerHTML = '';
+  document.getElementById('meta-json').textContent = '';
+  document.getElementById('log-wrap').classList.remove('visible');
+  document.getElementById('meta-wrap').classList.remove('visible');
+  document.getElementById('copy-btn').style.display = 'none';
+  document.getElementById('reset-btn').style.display = 'none';
+  document.getElementById('copy-feedback').textContent = '';
+  document.getElementById('file-input').value = '';
+  setStatus('');
+}
+
+// ─── Instrumented parse pipeline ─────────────────────────────────────────────
+
+async function runDebugParse(file) {
+  showLog();
+  setStatus('Parsing…');
+
+  // 1. File received
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1) + 'MB';
+  logLine(`File received: ${file.name} · ${sizeMB} · ${file.type || '(no MIME type)'}`, 'ok');
+
+  // 2. Extension check
+  const name = file.name.toLowerCase();
+  const isZip = name.endsWith('.zip');
+  const isXml = name.endsWith('.xml');
+  if (isZip || isXml) {
+    logLine(`Extension check: ${isZip ? '.zip' : '.xml'}`, 'ok');
+  } else {
+    logLine(`Extension check: "${name.split('.').pop()}" — NOT .zip or .xml`, 'err');
+    logLine(`Expected a .zip or .xml Apple Health export file.`, 'err', 'error');
+    showActions();
+    setStatus('Failed at step 2.');
+    return;
+  }
+
+  let xmlText;
+  if (isZip) {
+    // 3. JSZip availability
+    if (!window.JSZip) {
+      logLine(`JSZip load: library not available — CDN may have failed to load`, 'err', 'error');
+      showActions();
+      setStatus('Failed at step 3.');
+      return;
+    }
+    logLine(`JSZip library: available`, 'ok');
+
+    // 4. Load the zip
+    let zip;
+    try {
+      logLine(`Attempting JSZip.loadAsync()…`, 'info');
+      zip = await window.JSZip.loadAsync(file);
+    } catch (e) {
+      logLine(`JSZip load: FAILED — ${e.message}`, 'err', 'error');
+      logLine(e.stack || '(no stack)', null, 'error-stack');
+      showActions();
+      setStatus('Failed at step 4.');
+      return;
+    }
+    const zipKeys = Object.keys(zip.files);
+    logLine(`JSZip load: success · ${zipKeys.length} file(s) in archive`, 'ok');
+
+    // 5. ZIP contents
+    logLine(`ZIP contents (${zipKeys.length}): ${zipKeys.join(', ')}`, 'info');
+
+    // 6. Find export.xml
+    let entry = zip.file('apple_health_export/export.xml');
+    if (entry) {
+      logLine(`Direct path lookup (apple_health_export/export.xml): FOUND`, 'ok');
+    } else {
+      logLine(`Direct path lookup (apple_health_export/export.xml): not found — trying regex…`, 'info');
+      const matches = zip.file(/export\.xml$/i);
+      logLine(`Regex search (/export\\.xml$/i): ${matches.length} match(es)${matches.length ? ' — ' + matches.map(f=>f.name).join(', ') : ''}`, matches.length ? 'ok' : 'err');
+      entry = matches[0] || null;
+    }
+
+    if (!entry) {
+      logLine(`XML file found: NOT FOUND — no export.xml anywhere in the archive`, 'err', 'error');
+      logLine(`Make sure you exported "All Health Data" from the Health app on your iPhone.`, 'info');
+      showActions();
+      setStatus('Failed — export.xml not found in zip.');
+      return;
+    }
+    logLine(`XML file found: ${entry.name}`, 'ok');
+
+    // 7. Extract
+    try {
+      logLine(`Extracting XML from zip…`, 'info');
+      xmlText = await entry.async('text');
+    } catch (e) {
+      logLine(`XML extraction: FAILED — ${e.message}`, 'err', 'error');
+      logLine(e.stack || '(no stack)', null, 'error-stack');
+      showActions();
+      setStatus('Failed at extraction.');
+      return;
+    }
+  } else {
+    // Plain XML
+    logLine(`Reading plain XML file…`, 'info');
+    try {
+      xmlText = await file.text();
+    } catch (e) {
+      logLine(`file.text() read: FAILED — ${e.message}`, 'err', 'error');
+      showActions();
+      setStatus('Failed to read XML file.');
+      return;
+    }
+  }
+
+  // 8. XML size
+  const xmlLen = xmlText ? xmlText.length : 0;
+  const xmlMB  = (xmlLen / 1024 / 1024).toFixed(1);
+  if (xmlLen >= 500) {
+    logLine(`XML size: ${xmlLen.toLocaleString()} chars (${xmlMB} MB)`, 'ok');
+  } else {
+    logLine(`XML size: ${xmlLen.toLocaleString()} chars — too small (need ≥ 500), file appears empty or corrupted`, 'err', 'error');
+    showActions();
+    setStatus('Failed — XML too small.');
+    return;
+  }
+
+  // 9. Parse records
+  logLine(`Scanning XML records… (may take a moment for large files)`, 'info');
+
+  const SLEEP_TYPE    = 'HKCategoryTypeIdentifierSleepAnalysis';
+  const HR_TYPE       = 'HKQuantityTypeIdentifierHeartRate';
+  const STEPS_TYPE    = 'HKQuantityTypeIdentifierStepCount';
+  const ACTIVE_E_TYPE = 'HKQuantityTypeIdentifierActiveEnergyBurned';
+  const MINDFUL_TYPE  = 'HKCategoryTypeIdentifierMindfulSession';
+  const WEIGHT_TYPE   = 'HKQuantityTypeIdentifierBodyMass';
+  const HRV_TYPE      = 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN';
+
+  const sleepSegs       = [];
+  const inBedSegs       = [];
+  const hrReadings      = [];
+  const stepsRaw        = [];
+  const activeEnergyRaw = [];
+  const mindfulRaw      = [];
+  const weightRaw       = [];
+  const hrvRaw          = [];
+
+  let totalRecords = 0;
+  for (const tag of _iterElems(xmlText, 'Record')) {
+    totalRecords++;
+    const type = _getAttr(tag, 'type');
+    if (type === SLEEP_TYPE) {
+      const val = _getAttr(tag, 'value') || '';
+      const start = _parseAHDate(_getAttr(tag, 'startDate'));
+      const end   = _parseAHDate(_getAttr(tag, 'endDate'));
+      if (!start || !end || end <= start) continue;
+      if (val.includes('Asleep') && !val.includes('Awake')) sleepSegs.push({ start, end });
+      else if (val.includes('InBed')) inBedSegs.push({ start, end });
+    } else if (type === HR_TYPE) {
+      const val = parseFloat(_getAttr(tag, 'value'));
+      const ts  = _parseAHDate(_getAttr(tag, 'startDate'));
+      if (ts && !isNaN(val) && val > 20 && val < 250) {
+        hrReadings.push({ startDate: _getAttr(tag,'startDate'), endDate: _getAttr(tag,'endDate'), value: String(Math.round(val)), unit: _getAttr(tag,'unit')||'count/min', sourceName: _getAttr(tag,'sourceName'), _ts: ts.getTime() });
+      }
+    } else if (type === STEPS_TYPE || type === ACTIVE_E_TYPE || type === WEIGHT_TYPE || type === HRV_TYPE) {
+      const val   = parseFloat(_getAttr(tag, 'value'));
+      const start = _getAttr(tag, 'startDate');
+      if (!isNaN(val) && val >= 0 && start) {
+        const rec = { startDate: start, endDate: _getAttr(tag,'endDate'), value: val, unit: _getAttr(tag,'unit')||'', sourceName: _getAttr(tag,'sourceName')||'' };
+        if      (type === STEPS_TYPE)    stepsRaw.push(rec);
+        else if (type === ACTIVE_E_TYPE) activeEnergyRaw.push(rec);
+        else if (type === WEIGHT_TYPE)   weightRaw.push(rec);
+        else if (type === HRV_TYPE)      hrvRaw.push(rec);
+      }
+    } else if (type === MINDFUL_TYPE) {
+      const start = _getAttr(tag, 'startDate');
+      const end   = _getAttr(tag, 'endDate');
+      if (start && end) {
+        const s = _parseAHDate(start), e = _parseAHDate(end);
+        if (s && e && e > s) mindfulRaw.push({ startDate: start, endDate: end, durationMin: (e-s)/60000, sourceName: _getAttr(tag,'sourceName')||'' });
+      }
+    }
+  }
+
+  logLine(`Total <Record> elements scanned: ${totalRecords.toLocaleString()}`, 'info');
+
+  // 10. Sleep records
+  logLine(
+    `Sleep records — Asleep: ${sleepSegs.length.toLocaleString()} · InBed: ${inBedSegs.length.toLocaleString()} · HR readings: ${hrReadings.length.toLocaleString()}`,
+    sleepSegs.length > 0 || inBedSegs.length > 0 ? 'ok' : 'err'
+  );
+  logLine(
+    `Other records — Steps: ${stepsRaw.length.toLocaleString()} · ActiveEnergy: ${activeEnergyRaw.length.toLocaleString()} · HRV: ${hrvRaw.length.toLocaleString()} · Mindful: ${mindfulRaw.length.toLocaleString()} · Weight: ${weightRaw.length.toLocaleString()}`,
+    'info'
+  );
+
+  // Workout scan
+  const workoutRaw = [];
+  for (const tag of _iterElems(xmlText, 'Workout')) {
+    workoutRaw.push({ startDate: _getAttr(tag,'startDate'), endDate: _getAttr(tag,'endDate'), workoutActivityType: _getAttr(tag,'workoutActivityType'), duration: _getAttr(tag,'duration'), durationUnit: _getAttr(tag,'durationUnit')||'min', totalEnergyBurned: _getAttr(tag,'totalEnergyBurned'), totalEnergyBurnedUnit: _getAttr(tag,'totalEnergyBurnedUnit'), totalDistance: _getAttr(tag,'totalDistance'), totalDistanceUnit: _getAttr(tag,'totalDistanceUnit'), sourceName: _getAttr(tag,'sourceName') });
+  }
+  logLine(`Workouts: ${workoutRaw.length.toLocaleString()}`, 'info');
+
+  // 11. InBed fallback
+  const hasSleepStages = sleepSegs.length > 0;
+  if (sleepSegs.length === 0 && inBedSegs.length > 0) {
+    sleepSegs.push(...inBedSegs);
+    logLine(`No Asleep stages — falling back to InBed records (${inBedSegs.length.toLocaleString()})`, 'info');
+  }
+
+  if (sleepSegs.length === 0) {
+    logLine(`Sleep data: NONE — no Asleep or InBed records found after fallback`, 'err', 'error');
+    logLine(`Make sure sleep tracking was enabled and your export includes sleep data.`, 'info');
+    showActions();
+    setStatus('Failed — no sleep data found.');
+    return;
+  }
+
+  // 12. Group nights
+  sleepSegs.sort((a, b) => a.start - b.start);
+  const GAP_MS = 4 * 60 * 60 * 1000;
+  const nights = [];
+  let group = [sleepSegs[0]];
+  for (let i = 1; i < sleepSegs.length; i++) {
+    const gap = sleepSegs[i].start - group[group.length-1].end;
+    if (gap < GAP_MS) group.push(sleepSegs[i]);
+    else { const n = _buildNight(group); if (n) nights.push(n); group = [sleepSegs[i]]; }
+  }
+  const lastN = _buildNight(group);
+  if (lastN) nights.push(lastN);
+
+  logLine(
+    `Nights grouped: ${nights.length}${nights.length === 0 ? ' — all segments were < 30 min' : ''}`,
+    nights.length > 0 ? 'ok' : 'err'
+  );
+
+  if (nights.length === 0) {
+    logLine(`Every sleep segment was shorter than 30 minutes — no valid nights could be built.`, 'err', 'error');
+    showActions();
+    setStatus('Failed — no valid nights (all < 30 min).');
+    return;
+  }
+
+  nights.sort((a, b) => a._onsetMs - b._onsetMs);
+
+  // 13. Attach RHR
+  hrReadings.sort((a, b) => a._ts - b._ts);
+  let nightsWithRhr = 0;
+  for (const night of nights) {
+    const w90 = hrReadings.filter(h => h._ts >= night._wakeMs && h._ts <= night._wakeMs + 5400000);
+    if (w90.length > 0) {
+      const vals = w90.map(h => parseFloat(h.value));
+      night.rhr = parseFloat((vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1));
+      nightsWithRhr++;
+    }
+  }
+  logLine(`Morning RHR attached to ${nightsWithRhr} of ${nights.length} nights`, nightsWithRhr > 0 ? 'ok' : 'info');
+
+  // 14. Compute deviations
+  const medOnset = _median(nights.map(n => n.onsetNorm));
+  for (const night of nights) night.deviationMin = parseFloat(((night.onsetNorm - medOnset) * 60).toFixed(1));
+
+  // 15. Compute meta
+  let meta;
+  try {
+    meta = _computeMeta(nights, hrReadings, workoutRaw, { stepsRaw, activeEnergyRaw, mindfulRaw, weightRaw, hrvRaw, hasSleepStages });
+    logLine(`_computeMeta: success`, 'ok');
+  } catch (e) {
+    logLine(`_computeMeta: FAILED — ${e.message}`, 'err', 'error');
+    logLine(e.stack || '(no stack)', null, 'error-stack');
+    showActions();
+    setStatus('Failed at _computeMeta.');
+    return;
+  }
+
+  // Strip internal fields
+  nights.forEach(n => { delete n._onsetMs; delete n._wakeMs; });
+  hrReadings.forEach(h => { delete h._ts; });
+
+  // 16. Summary
+  logLine(`━━━ PARSE COMPLETE ━━━`, 'ok');
+  logLine(`Nights: ${meta.totalNights} · Avg sleep: ${meta.avgSleepHrs.toFixed(1)}h · Onset SD: ±${Math.round(meta.onsetSdMin)} min · Social jetlag: ${Math.round(meta.jetlagMin)} min`, 'ok');
+  logLine(`Device: ${meta.dataProfile.hasWhoop ? 'Whoop' : meta.dataProfile.hasWatch ? 'Apple Watch' : 'iPhone only'} · Sleep source: ${meta.dataProfile.primarySleepSource} · HRV: ${meta.dataProfile.hasHRV} · Steps: ${meta.dataProfile.hasSteps}`, 'info');
+
+  showMeta(meta);
+  showActions();
+  setStatus('Done.');
+}
+
+// ─── File input wiring ────────────────────────────────────────────────────────
+
+document.getElementById('file-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  resetPage();
+  try {
+    await runDebugParse(file);
+  } catch (err) {
+    showLog();
+    logLine(`Unhandled error: ${err.message}`, 'err', 'error');
+    logLine(err.stack || '(no stack)', null, 'error-stack');
+    showActions();
+    setStatus('Unexpected error — see log.');
+  }
+});
+</script>
+</body>
+</html>
