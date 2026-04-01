@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Manrope:wght@400;500;700&family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -239,13 +240,16 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* Header — centered title, icon buttons each side */
+  /* Header — logo left, avatar right */
   header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px; background: var(--bg);
+    padding: 16px 20px; background: rgba(247,245,241,0.8);
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0; z-index: 100; backdrop-filter: blur(8px);
   }
+  .logo-container { position: relative; }
+  #header-logo-canvas { display: block; width: 140px; height: 32px; touch-action: none; }
+  #hidden-text-ref { position: absolute; visibility: hidden; font-family: 'Noto Serif', serif; font-weight: 700; font-size: 20px; letter-spacing: 0.3em; }
   .header-menu-btn, .header-profile-btn {
     width: 40px; height: 40px; border-radius: 50%;
     background: none; border: none; cursor: pointer;
@@ -256,7 +260,7 @@
   .header-menu-btn:active, .header-profile-btn:active { background: var(--surf2); }
   .header-profile-btn { background: var(--surf2); border: 1px solid var(--border); }
   .profile-avatar { width:100%; height:100%; background:#1A1917; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Manrope','Inter',sans-serif; font-size:13px; font-weight:700; color:#ffffff; }
-  .header-logo { font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 700; letter-spacing: normal; color: var(--text); }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
   /* Dashboard gets bottom padding for fixed nav */
   #screen-dash { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -264,29 +268,27 @@
   /* Hero block */
   .hero-block { display: flex; flex-direction: column; align-items: center; padding: 40px 20px 24px; background: var(--bg); gap: 0; }
 
-  /* Block 1: Score */
-  .hero-score-section { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 28px; }
-  .hero-score-num {
-    font-size: 96px; font-weight: 800; line-height: 1; letter-spacing: -.04em;
-    color: var(--green); margin-bottom: 8px;
-    animation: score-breathe 4s ease-in-out infinite;
-  }
-  @keyframes score-breathe { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.03); } }
-  .hero-grade { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; color: var(--muted); margin-bottom: 12px; }
-  .hero-headline { font-size: 20px; font-weight: 400; color: var(--text); text-align: center; line-height: 1.45; max-width: 280px; }
+  /* Block 1: Arc score */
+  .living-arc-container { position: relative; width: min(340px, 100%); height: 260px; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 20px; }
+  #arc-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .arc-score-inner { position: relative; z-index: 10; text-align: center; padding-top: 48px; }
+  .arc-score-num { font-family: 'Noto Serif', Georgia, serif; font-size: 100px; line-height: 1; font-weight: 700; letter-spacing: -0.05em; color: #1A1917; }
+  .arc-score-grade { font-family: 'Manrope', 'Inter', sans-serif; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-top: -10px; color: #1A1917; }
+  .hero-headline { font-family: 'Noto Serif', Georgia, serif; font-size: 20px; font-weight: 400; color: var(--text); text-align: center; line-height: 1.45; max-width: 280px; margin-top: 16px; margin-bottom: 24px; }
 
-  /* Block 2: Cadence AI card */
-  .cadence-insight-wrap { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 12px; }
-  .cadence-insight-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .cadence-header-left { display: flex; align-items: center; gap: 7px; }
-  .cadence-card-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7252D8; }
-  .cadence-dot { width: 7px; height: 7px; border-radius: 50%; background: #7252D8; box-shadow: 0 0 8px #7252D8; animation: pulse-dot 2s ease-in-out infinite; }
-  @keyframes pulse-dot { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(.8); } }
-  .cadence-expand-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--surf2); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--faint); }
-  .cadence-loading { display: flex; flex-direction: column; gap: 9px; padding: 4px 0 8px; }
-  .cadence-skel { height: 14px; background: var(--surf2); border-radius: 6px; animation: skel-pulse 1.5s ease-in-out infinite; }
-  @keyframes skel-pulse { 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
-  .cadence-error { font-size: 14px; color: var(--muted); line-height: 1.6; padding: 4px 0; }
+  /* Block 2: Insight card (hand-drawn oval style) */
+  .cadence-insight-wrap { width: 100%; background: rgba(255,255,255,0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 28px; margin-bottom: 12px; text-align: center; transition: transform 0.5s; }
+  .cadence-insight-wrap:hover { transform: translateY(-4px); }
+  .cadence-insight-title { font-family: 'Noto Serif', Georgia, serif; font-weight: 700; font-size: 18px; color: var(--text); text-decoration: underline; text-decoration-color: #98f994; text-decoration-thickness: 4px; text-underline-offset: 4px; margin-bottom: 16px; display: block; }
+  .cadence-insight-desc { font-family: 'Manrope', 'Inter', sans-serif; font-size: 13px; color: rgba(0,0,0,0.7); line-height: 1.65; margin-bottom: 14px; }
+  .cadence-insight-action { font-family: 'Noto Serif', Georgia, serif; font-style: italic; font-size: 13px; color: #1A1917; padding: 0 16px; line-height: 1.5; display: block; }
+
+  /* Block 3: Tonight recommendation card */
+  .tonight-card { width: 100%; background: #98f994; border-radius: 16px; padding: 24px; box-shadow: 0 10px 40px -10px rgba(152,249,148,0.5); position: relative; overflow: hidden; }
+  .tonight-label { font-family: 'Manrope', 'Inter', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(26,25,23,0.4); margin-bottom: 8px; }
+  .tonight-insight { font-family: 'Noto Serif', Georgia, serif; font-style: italic; font-size: 18px; line-height: 1.4; color: #1A1917; margin-bottom: 10px; }
+  .tonight-time { font-family: 'Manrope', 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #3a8a30; }
+  .tonight-refresh { position: absolute; bottom: 16px; right: 18px; font-size: 18px; color: rgba(26,25,23,0.2); line-height: 1; }
   .cadence-local { padding: 2px 0 6px; }
   .cadence-score-title { font-family:'Noto Serif',Georgia,serif; font-weight:700; font-size:15px; color:var(--text); text-decoration:underline; text-decoration-color:var(--lime); text-decoration-thickness:3px; text-underline-offset:4px; margin-bottom:10px; }
   .cadence-score-body { font-family:'Manrope','Inter',sans-serif; font-size:13px; color:rgba(26,25,23,0.7); line-height:1.6; margin-bottom:12px; }
@@ -824,12 +826,10 @@
 <div id="screen-dash" class="screen">
 
 <header>
-  <button class="header-menu-btn" onclick="openSettings()" aria-label="Menu">
-    <svg width="18" height="13" viewBox="0 0 18 13" fill="none">
-      <path d="M0 1h18M0 6.5h18M0 12h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-  </button>
-  <div class="header-logo">Cadence</div>
+  <div class="logo-container">
+    <canvas id="header-logo-canvas"></canvas>
+    <div id="hidden-text-ref">CADENCE</div>
+  </div>
   <button class="header-profile-btn" id="header-profile-btn" onclick="openSettings()" aria-label="Profile">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <circle cx="8" cy="5.5" r="2.5" fill="currentColor"/>
@@ -843,51 +843,43 @@
 <!-- ── Hero: score + Cadence AI card + action box (stacked vertical) ── -->
 <div class="hero-block">
 
-  <!-- Block 1: Score number -->
-  <div class="hero-score-section">
-    <div class="hero-score-num" id="rhythm-score">—</div>
-    <div class="hero-grade" id="rhythm-tag">—</div>
-    <div class="hero-headline" id="hero-headline">—</div>
-  </div>
-
-  <!-- Block 2: Cadence AI card -->
-  <div class="cadence-insight-wrap" id="cadence-insight-wrap">
-    <div class="cadence-insight-header">
-      <div class="cadence-header-left">
-        <div class="cadence-dot"></div>
-        <span class="cadence-card-label">CADENCE</span>
-      </div>
-      <button class="cadence-expand-btn" aria-label="Expand">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M1 5V1h4M8 1h4v4M12 8v4H8M5 12H1V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-    <div class="cadence-local" id="cadence-local" style="display:none">
-      <div class="cadence-score-title">How your score is built</div>
-      <div class="cadence-score-body">A weighted measure of your sleep timing consistency, recovery quality, and alignment with your body's natural rhythm.</div>
-      <div class="cadence-score-action" id="cadence-worst-insight"></div>
-    </div>
-    <div class="cadence-loading" id="cadence-loading">
-      <div class="cadence-skel" style="width:100%"></div>
-      <div class="cadence-skel" style="width:85%"></div>
-      <div class="cadence-skel" style="width:68%"></div>
-    </div>
-    <div class="cadence-insight-body" id="cadence-insight-body" style="display:none"></div>
-    <div class="cadence-error" id="cadence-error" style="display:none">
-      Cadence is having trouble connecting. Try reimporting your data.
-    </div>
-    <div class="cadence-tonight-section" id="cadence-tonight-section" style="display:none">
-      <div class="cadence-divider"></div>
-      <div class="cadence-tonight-label">TONIGHT</div>
-      <div class="cadence-tonight-time" id="cadence-tonight-time">—</div>
-      <div class="cadence-tonight-sub" id="cadence-tonight-sub"></div>
-      <div class="cadence-tonight-conf" id="cadence-tonight-conf" style="display:none">⚠ Low confidence — upload more nights for better accuracy</div>
+  <!-- Block 1: Arc score -->
+  <div class="living-arc-container">
+    <canvas id="arc-canvas"></canvas>
+    <div class="arc-score-inner">
+      <div class="arc-score-num" id="rhythm-score">—</div>
+      <div class="arc-score-grade" id="rhythm-tag">—</div>
     </div>
   </div>
+  <div class="hero-headline" id="hero-headline">—</div>
 
-  <!-- Block 3: Action box (always shown, computed from local data) -->
-  <div class="hero-action-box" id="hero-action-box" style="display:none"></div>
+  <!-- Block 2: Insight card -->
+  <div class="cadence-insight-wrap hand-drawn-border" id="cadence-insight-wrap">
+    <span class="cadence-insight-title">Explanation / Insight</span>
+    <p class="cadence-insight-desc">A weighted measure of your sleep timing consistency, recovery quality, and alignment with your body's natural rhythm.</p>
+    <span class="cadence-insight-action" id="cadence-worst-insight"></span>
+  </div>
+
+  <!-- Block 3: Tonight recommendation card -->
+  <!-- TODO: replace placeholder with /narrate response when AI insight pipeline is connected -->
+  <div class="tonight-card" id="hero-action-box" style="display:none">
+    <div class="tonight-label">TONIGHT'S FOCUS</div>
+    <div class="tonight-insight" id="tonight-insight">Dim your lights and close your screens. Your rhythm needs an earlier cue tonight.</div>
+    <div class="tonight-time" id="tonight-wind-time">Starting at —</div>
+    <span class="tonight-refresh material-symbols-outlined">refresh</span>
+  </div>
+
+  <!-- Orphan API elements (referenced by fetchCadenceInsight, kept in DOM but hidden) -->
+  <div style="display:none" aria-hidden="true">
+    <div id="cadence-loading"></div>
+    <div id="cadence-insight-body"></div>
+    <div id="cadence-error"></div>
+    <div id="cadence-tonight-section">
+      <div id="cadence-tonight-time"></div>
+      <div id="cadence-tonight-sub"></div>
+      <div id="cadence-tonight-conf"></div>
+    </div>
+  </div>
 
 </div>
 
@@ -2024,6 +2016,148 @@ importDropZone.addEventListener('drop', e => {
   showDropError(result);
 });
 
+// ── Arc score particle animation ──────────────────────────────────────────
+(function() {
+  let _arcParticles = [], _arcFairy = [], _arcW = 0, _arcH = 0;
+  let _arcScore = 65, _arcRunning = false;
+
+  function _arcStar(ctx, x, y, size, opacity, score, fairy) {
+    const f = score / 100;
+    const r = Math.round(26 + (90 - 26) * f);
+    const g = Math.round(26 + (184 - 26) * f);
+    const b = Math.round(26 + (86 - 26) * f);
+    ctx.fillStyle = `rgba(${r},${g},${b},${fairy ? opacity * 0.3 : opacity})`;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      ctx.lineTo(x + Math.cos(i * Math.PI / 2) * size, y + Math.sin(i * Math.PI / 2) * size);
+      ctx.lineTo(x + Math.cos(i * Math.PI / 2 + Math.PI / 4) * (size / 3), y + Math.sin(i * Math.PI / 2 + Math.PI / 4) * (size / 3));
+    }
+    ctx.fill();
+  }
+
+  function _arcBuild(canvas, score) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    _arcW = rect.width; _arcH = rect.height;
+    canvas.width = _arcW * dpr; canvas.height = _arcH * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    _arcParticles = []; _arcFairy = [];
+    const cx = _arcW / 2, cy = _arcH * 0.7, radius = Math.min(_arcW, _arcH) * 0.42;
+    const startA = Math.PI * 0.9, endA = Math.PI * 2.1;
+    const currentEnd = startA + (endA - startA) * (score / 100);
+
+    for (let i = 0; i < 400; i++) {
+      const a = startA + Math.random() * (currentEnd - startA);
+      const r = radius + (Math.random() - 0.5) * 18;
+      _arcParticles.push({ bx: cx + Math.cos(a) * r, by: cy + Math.sin(a) * r, x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, size: Math.random() * 2.5 + 1, phase: Math.random() * Math.PI * 2, speed: 0.02 + Math.random() * 0.02 });
+    }
+    for (let i = 0; i < 150; i++) {
+      const a = startA + Math.random() * (endA - startA);
+      const r = radius + (Math.random() - 0.5) * 8;
+      _arcFairy.push({ bx: cx + Math.cos(a) * r, by: cy + Math.sin(a) * r, x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, size: Math.random() * 1.2 + 0.5, phase: Math.random() * Math.PI * 2, speed: 0.01 + Math.random() * 0.01 });
+    }
+    return ctx;
+  }
+
+  let _arcCtx = null;
+  function _arcLoop() {
+    if (!_arcCtx) return;
+    _arcCtx.clearRect(0, 0, _arcW, _arcH);
+    _arcFairy.forEach(p => {
+      p.phase += p.speed;
+      p.x = p.bx + Math.sin(p.phase) * 0.8;
+      p.y = p.by + Math.cos(p.phase) * 0.8;
+      _arcStar(_arcCtx, p.x, p.y, p.size, 0.1 + Math.sin(p.phase) * 0.1, _arcScore, true);
+    });
+    _arcParticles.forEach(p => {
+      p.phase += p.speed;
+      p.x = p.bx + Math.sin(p.phase) * 1.5;
+      p.y = p.by + Math.cos(p.phase) * 1.5;
+      _arcStar(_arcCtx, p.x, p.y, p.size, 0.4 + Math.sin(p.phase) * 0.3, _arcScore, false);
+    });
+    requestAnimationFrame(_arcLoop);
+  }
+
+  window.initArcCanvas = function(score) {
+    const canvas = document.getElementById('arc-canvas');
+    if (!canvas) return;
+    _arcScore = score;
+    _arcCtx = _arcBuild(canvas, score);
+    if (!_arcRunning) { _arcRunning = true; _arcLoop(); }
+  };
+})();
+
+// ── Header logo particle canvas ───────────────────────────────────────────
+(function() {
+  function initHeaderLogo() {
+    const canvas = document.getElementById('header-logo-canvas');
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const lw = rect.width, lh = rect.height;
+    if (!lw || !lh) return;
+    canvas.width = lw * dpr; canvas.height = lh * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    // Sample pixel positions from text
+    const off = document.createElement('canvas');
+    off.width = lw * dpr; off.height = lh * dpr;
+    const offCtx = off.getContext('2d');
+    offCtx.scale(dpr, dpr);
+    offCtx.font = `bold 20px "Noto Serif"`;
+    offCtx.letterSpacing = '4px';
+    offCtx.textAlign = 'center';
+    offCtx.textBaseline = 'middle';
+    offCtx.fillStyle = '#1A1917';
+    offCtx.fillText('CADENCE', lw / 2, lh / 2);
+    const px = offCtx.getImageData(0, 0, lw * dpr, lh * dpr).data;
+
+    const particles = [];
+    const step = Math.round(1.5 * dpr);
+    for (let y = 0; y < lh * dpr; y += step) {
+      for (let x = 0; x < lw * dpr; x += step) {
+        if (px[(y * lw * dpr + x) * 4 + 3] > 128) {
+          particles.push({ x: Math.random() * lw, y: Math.random() * lh, tx: x / dpr, ty: y / dpr, vx: 0, vy: 0 });
+        }
+      }
+    }
+
+    function drawStar(x, y, size, opacity) {
+      ctx.fillStyle = `rgba(26,25,23,${opacity})`;
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        ctx.lineTo(x + Math.cos(i * Math.PI / 2) * size, y + Math.sin(i * Math.PI / 2) * size);
+        ctx.lineTo(x + Math.cos(i * Math.PI / 2 + Math.PI / 4) * (size / 3), y + Math.sin(i * Math.PI / 2 + Math.PI / 4) * (size / 3));
+      }
+      ctx.fill();
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, lw, lh);
+      particles.forEach(p => {
+        p.vx += (p.tx - p.x) * 0.06;
+        p.vy += (p.ty - p.y) * 0.06;
+        p.vx *= 0.88; p.vy *= 0.88;
+        p.x += p.vx; p.y += p.vy;
+        drawStar(p.x, p.y, 1.2, 0.8);
+      });
+      requestAnimationFrame(loop);
+    }
+    loop();
+  }
+
+  // Init after fonts and layout are ready
+  if (document.readyState === 'complete') {
+    document.fonts.ready.then(initHeaderLogo);
+  } else {
+    window.addEventListener('load', () => document.fonts.ready.then(initHeaderLogo));
+  }
+  window.addEventListener('resize', () => setTimeout(initHeaderLogo, 100));
+})();
+
 // ── Profile avatar ────────────────────────────────────────────────────────
 function _updateProfileAvatar() {
   const btn = $('header-profile-btn');
@@ -2189,16 +2323,14 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   console.log(`[Cadence] UI v2 loaded`);
   console.log(`[Cadence] Score: ${score} Grade: ${rm.label}`);
 
-  // ── Hero: big number ──
-  const scoreEl=$('rhythm-score');
-  scoreEl.textContent=score;
-  scoreEl.style.color=rm.color;
-  $('rhythm-tag').textContent=rm.label;
-  $('hero-headline').textContent=rm.headline;
+  // ── Hero: arc score ──
+  $('rhythm-score').textContent = score;
+  $('rhythm-tag').textContent = rm.label;
+  $('hero-headline').textContent = rm.headline;
+  initArcCanvas(score);
 
   const bestW=meta.workoutWindows?.[0];
-  const windDown=fmtHour((meta.medianOnset-1.5)%24);
-  const targetBed=fmtHour((meta.medianOnset+0.5)%24);
+  const windDown = fmtHour(meta.medianOnset - 0.75);
 
   // ── Wind-down sub-label pre-populated for when API returns ──
   const subEl=$('cadence-tonight-sub');
@@ -2224,21 +2356,16 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   // ── Signal Cards ──
   const { worstAction } = buildSignalCards(meta, nights, getProfile());
 
-  // ── Hero insight card (local content) ──
-  const localEl = $('cadence-local');
-  if (localEl) {
-    $('cadence-worst-insight').textContent = worstAction;
-    localEl.style.display = '';
-    $('cadence-loading').style.display = 'none';
-  }
+  // ── Insight card: worst action line ──
+  const worstEl = $('cadence-worst-insight');
+  if (worstEl) worstEl.textContent = worstAction;
 
-  // ── Action box → Upload new data ──
+  // ── Tonight recommendation card ──
   const actionEl = $('hero-action-box');
   if (actionEl) {
-    actionEl.innerHTML = `<button onclick="$('file-input').click()" style="all:unset;width:100%;display:block;text-align:center;font-family:'Manrope','Inter',sans-serif;font-size:14px;font-weight:700;letter-spacing:-.01em;color:var(--text);cursor:pointer">Upload new data</button>`;
-    actionEl.style.display = 'flex';
-    actionEl.style.alignItems = 'center';
-    actionEl.style.justifyContent = 'center';
+    const windDownEl = $('tonight-wind-time');
+    if (windDownEl) windDownEl.textContent = `Starting at ${windDown}`;
+    actionEl.style.display = 'block';
   }
 
   // ── Profile avatar ──
