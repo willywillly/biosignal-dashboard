@@ -6,7 +6,7 @@
   <title>Cadence · Circadian Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Manrope:wght@400;500;700&family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -403,6 +403,86 @@
   .corr-value { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
   .corr-delta-value { font-size: 34px; font-weight: 800; color: var(--lime); letter-spacing: -.03em; }
   .corr-insight { padding: 16px 18px; background: var(--surf2); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* ── Signal Cards ── */
+  .hand-drawn-border {
+    border-radius: 45% 55% 52% 48% / 54% 45% 55% 46%;
+    border: 1px solid rgba(26, 25, 23, 0.12);
+  }
+  .sc-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 20px 8px;
+  }
+  .sc-card {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 28px 28px 24px;
+    transition: transform 0.2s ease;
+  }
+  @media (hover: hover) {
+    .sc-card:hover { transform: translateY(-3px); }
+  }
+  .sc-label {
+    font-family: 'Manrope', 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .sc-value {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+  .sc-insight {
+    font-family: 'Noto Serif', Georgia, serif;
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .sc-trigger {
+    font-family: 'Manrope', 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--lime);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    padding: 0;
+    transition: color 0.15s;
+  }
+  .sc-trigger:hover { color: #6a9e20; }
+  .sc-arrow { display: inline-block; transition: transform 0.3s ease; }
+  .sc-trigger.open .sc-arrow { transform: rotate(90deg); }
+  .sc-expand {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+  .sc-expand.open { max-height: 500px; }
+  .sc-expand-inner {
+    padding-top: 16px;
+    border-top: 1px solid rgba(26, 25, 23, 0.08);
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .sc-expand-inner strong { color: var(--text); font-weight: 600; }
 
   /* ── Modals ── */
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
@@ -804,81 +884,15 @@
 <!-- ── Accordion sections ── -->
 <div class="acc-sections">
 
-  <!-- Your Patterns -->
+  <!-- Your Signal -->
   <div class="acc-section open" id="acc-patterns">
     <div class="acc-header" onclick="toggleAcc('acc-patterns')">
-      <span class="acc-title">Your Patterns</span>
+      <span class="acc-title">Your Signal</span>
       <div class="acc-chevron"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     </div>
     <div class="acc-body">
       <div class="acc-inner">
-        <div class="acc-grid">
-          <div class="acc-card acc-card-full">
-            <div class="card-header">
-              <div class="card-title">Your Circadian Pattern</div>
-              <div class="card-meta" id="clock-meta"></div>
-            </div>
-            <div class="dual-wrap">
-              <div class="clock-panel">
-                <div class="clock-panel-label">Every night, mapped</div>
-                <canvas id="clock-canvas" class="clock"></canvas>
-                <div class="toggle-row" style="justify-content:center;margin-top:10px">
-                  <button class="toggle-btn active" id="btn-all" onclick="setClockMode('all')">All nights</button>
-                  <button class="toggle-btn" id="btn-consistent" onclick="setClockMode('consistent')">Consistent only</button>
-                </div>
-                <div class="clock-panel-sub">Tap any arc or dot for details</div>
-              </div>
-              <div class="clock-panel">
-                <div class="clock-panel-label">Your ideal schedule <span style="font-weight:400;color:var(--faint);font-size:9px;text-transform:none;letter-spacing:0">· built from your data</span></div>
-                <canvas id="blueprint-canvas" class="clock" style="cursor:default"></canvas>
-                <div class="bp-legend" id="bp-legend" style="margin-top:14px"></div>
-              </div>
-              <div class="clock-side">
-                <div class="legend-title">Sleep duration</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#D64B39"></div>&lt; 5 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#C4800C"></div>5 – 6 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#C89B0E"></div>6 – 7 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#3E9B32"></div>7 – 8 hrs (optimal)</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#2A7DC8"></div>8 – 9 hrs</div>
-                <div class="legend-row"><div class="legend-swatch" style="background:#7252D8"></div>&gt; 9 hrs</div>
-                <div class="legend-row" style="margin-top:8px"><div class="legend-dot" style="background:#C89B0E"></div>Workout session</div>
-              </div>
-            </div>
-            <div class="insight-box clock-insight-row" id="clock-insight"><span class="skel-text" style="width:90%"></span><span class="skel-text" style="width:75%"></span><span class="skel-text" style="width:55%"></span></div>
-          </div>
-
-          <div class="acc-card acc-card-2">
-            <div class="card-header"><div class="card-title">How consistent are you?</div></div>
-            <div class="c-stack" id="c-stack"></div>
-          </div>
-
-          <div class="acc-card acc-card-4">
-            <div class="card-header">
-              <div class="card-title">What the data actually shows</div>
-              <div class="card-meta">next-morning resting heart rate</div>
-            </div>
-            <div class="corr-grid">
-              <div class="corr-box">
-                <div class="corr-label">On-time nights</div>
-                <div class="corr-value" style="color:var(--green)" id="corr-best-rhr">—</div>
-                <div class="corr-sub">avg RHR · <span id="corr-best-n"></span> nights</div>
-                <div class="corr-sub" style="margin-top:5px;font-size:10px">Slept near usual time + 7–9h</div>
-              </div>
-              <div class="corr-box">
-                <div class="corr-label">Off-schedule nights</div>
-                <div class="corr-value" style="color:var(--red)" id="corr-rough-rhr">—</div>
-                <div class="corr-sub">avg RHR · <span id="corr-rough-n"></span> nights</div>
-                <div class="corr-sub" style="margin-top:5px;font-size:10px">Late bedtime or under 6h</div>
-              </div>
-              <div class="corr-box delta">
-                <div class="corr-label">The difference</div>
-                <div class="corr-delta-value" id="corr-delta">—</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:3px">bpm higher the next morning</div>
-              </div>
-            </div>
-            <div class="corr-insight" id="corr-insight"><span class="skel-text" style="width:88%"></span><span class="skel-text" style="width:70%"></span><span class="skel-text" style="width:50%"></span></div>
-          </div>
-        </div>
+        <div id="signal-cards-container" class="sc-container"></div>
       </div>
     </div>
   </div>
@@ -1999,6 +2013,109 @@ importDropZone.addEventListener('drop', e => {
   showDropError(result);
 });
 
+// ── Signal card accordion toggle ──────────────────────────────────────────
+function _scToggle(btn) {
+  const card   = btn.closest('.sc-card');
+  const expand = card.querySelector('.sc-expand');
+  const isOpen = expand.classList.contains('open');
+  // Close all open cards
+  document.querySelectorAll('#signal-cards-container .sc-expand.open').forEach(e => {
+    e.classList.remove('open');
+    e.closest('.sc-card').querySelector('.sc-trigger').classList.remove('open');
+  });
+  // Open this one if it was closed
+  if (!isOpen) {
+    expand.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+
+// ── Build signal cards ────────────────────────────────────────────────────
+function buildSignalCards(meta, nights, profile) {
+  const container = $('signal-cards-container');
+  if (!container) return;
+
+  function sc(label, value, valueColor, insight, expand) {
+    return `<div class="sc-card hand-drawn-border">
+      <div class="sc-label">${label}</div>
+      <div class="sc-value" style="color:${valueColor}">${value}</div>
+      <div class="sc-insight">${insight}</div>
+      <button class="sc-trigger" onclick="_scToggle(this)">
+        <span>See what this means</span>
+        <span class="sc-arrow">→</span>
+      </button>
+      <div class="sc-expand"><div class="sc-expand-inner">${expand}</div></div>
+    </div>`;
+  }
+
+  const cards = [];
+
+  // Card 1: Bedtime Drift
+  if (meta.onsetSdMin != null && !isNaN(meta.onsetSdMin)) {
+    const mins = Math.round(meta.onsetSdMin);
+    const col  = mins < 20 ? 'var(--green)' : mins < 40 ? 'var(--amber)' : 'var(--red)';
+    const feel = mins < 20 ? 'well-anchored — a strong circadian foundation.' : mins < 40 ? 'shifting night to night. Your body clock is still searching.' : 'swinging significantly. Irregular bedtimes weaken your rhythm.';
+    cards.push(sc(
+      'Bedtime Drift',
+      `±${mins} min`,
+      col,
+      `Your bedtime shifts by ${mins} minutes from night to night — ${feel}`,
+      `<strong>Why it matters:</strong> Bedtime variability above 30 minutes is independently linked to worse mood, cognitive performance, and metabolic health — even when total sleep time looks adequate. The brain uses consistent sleep onset as the primary anchor for your circadian clock. Target: keep variability under 20 minutes.`
+    ));
+  }
+
+  // Card 2: Social Jetlag
+  if (meta.jetlagMin != null && !isNaN(meta.jetlagMin)) {
+    const mins = Math.round(meta.jetlagMin);
+    const col  = mins < 30 ? 'var(--green)' : mins < 60 ? 'var(--amber)' : 'var(--red)';
+    const feel = mins < 30 ? 'minimal — your weekends barely shift your rhythm.' : mins < 60 ? 'moderate — a weekly rhythm disruption your body has to absorb.' : 'significant — you\'re giving yourself jet lag every weekend.';
+    cards.push(sc(
+      'Social Jetlag',
+      `${mins} min`,
+      col,
+      `On weekends you sleep ${mins} minutes later than weekdays. That weekly reset is ${feel}`,
+      `<strong>Social jetlag</strong> is the gap between your biological clock and your social schedule. Even 30 minutes of weekly drift measurably reduces insulin sensitivity, mood stability, and cognitive output. Athletes with high social jetlag consistently underperform peers with stable rhythms — even when total sleep hours are matched.`
+    ));
+  }
+
+  // Card 3: Workout Timing
+  const bestW = (meta.workoutWindows || []).find(w => w.rank === 0);
+  if (bestW && bestW.n >= 2) {
+    const rhrStr = bestW.avgRhr ? `${bestW.avgRhr.toFixed(0)} bpm avg next morning` : 'the best recovery signal in your data';
+    cards.push(sc(
+      'Best Workout Window',
+      bestW.label,
+      'var(--text)',
+      `${bestW.label} workouts gave you the lowest next-morning resting heart rate — ${rhrStr}. Your body recovers best after training in this window.`,
+      `<strong>Exercise timing matters</strong> because cortisol and core body temperature peak naturally in the late morning — your muscles, joints, and cardiovascular system are primed to work. Training at the same time each day also reinforces your circadian rhythm, compounding the benefit over time. Your data from ${bestW.n} ${bestW.label.toLowerCase()} sessions backs this up.`
+    ));
+  }
+
+  // Card 4: 7-Day Sleep Debt
+  const last7 = nights.slice(-7);
+  if (last7.length >= 3) {
+    const TARGET = 8;
+    const debt   = last7.reduce((sum, n) => sum + (TARGET - n.sleepHrs), 0);
+    const absStr = Math.abs(debt).toFixed(1);
+    const col    = debt > 0.5 ? 'var(--red)' : debt < -0.5 ? 'var(--green)' : 'var(--amber)';
+    const valStr = debt > 0.5 ? `−${absStr} hrs` : debt < -0.5 ? `+${absStr} hrs` : 'On target';
+    const feel   = debt > 0.5
+      ? `You're ${absStr} hours short of a full week of 8-hour nights. That deficit compounds daily — your brain is working harder than it needs to.`
+      : debt < -0.5
+      ? `You're ${absStr} hours ahead of your sleep target this week — a healthy buffer that supports recovery and performance.`
+      : `You're tracking right on your sleep target this week. Keep the consistency going.`;
+    cards.push(sc(
+      '7-Day Sleep Debt',
+      valStr,
+      col,
+      feel,
+      `<strong>Sleep debt is cumulative.</strong> Missing one hour each night for a week creates the same cognitive impairment as a full night with no sleep — but it happens gradually, so you adapt and stop noticing it. Recovery requires actual extra sleep, not just "normal" nights. Your brain's prefrontal cortex — responsible for decision-making and emotional regulation — is the first to suffer.`
+    ));
+  }
+
+  container.innerHTML = cards.join('');
+}
+
 // ── Dashboard render ───────────────────────────────────────────────────────
 function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   const score=rhythmScore(meta), rm=rhythmMeta(score);
@@ -2051,40 +2168,8 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
     setTimeout(()=>$(`stat-${i}`).classList.add('in'), 100+i*120);
   });
 
-  // ── Clocks ──
-  $('clock-meta').textContent=`${meta.totalNights} nights · ${meta.workoutTagged?.length||0} workouts`;
-  const clockEl=$('clock-canvas'); clockEl._logicalSize=240;
-  drawPatternClock(clockEl,nights,meta,meta.workoutTagged,'all');
-  setupClockHover(clockEl);
-  const bpEl=$('blueprint-canvas'); bpEl._logicalSize=240;
-  drawBlueprintClock(bpEl,meta);
-
-  // ── Clock insight ──
-  $('clock-insight').innerHTML=`The green band on the left clock is your ±30 min sweet spot — centered on <strong>${fmtHour(meta.medianOnset%24)}</strong>. Arcs that land in that band are your most consistent nights.${bestW?` Your blueprint (right) shows <strong>${bestW.label.toLowerCase()} workouts</strong> led to the lowest next-morning heart rate (${bestW.avgRhrControlled} bpm) — your body recovers best when you train in that window.`:''}
-    <div class="rec">Tonight: asleep by <span>${targetBed}</span> &nbsp;·&nbsp; Start winding down at <span>${windDown}</span></div>`;
-
-  // ── Consistency ──
-  function cMetric(label,val,unit,desc,min){
-    const g=grade(min);
-    return`<div class="c-metric"><div class="c-top"><div><div class="c-label">${label}</div><div><span class="c-value">${val}</span><span class="c-unit"> ${unit}</span></div></div><span class="grade ${g.cls}">${g.label}</span></div><div class="c-bar-track"><div class="c-bar-fill" style="width:${g.pct}%;background:${gradeColor(min)}"></div></div><div class="c-scale"><span>0</span><span>30</span><span>60</span><span>90+</span></div><div class="c-desc">${desc}</div></div>`;
-  }
-  const wrkHrs=workoutRaw.map(w=>parseInt(w.startDate.slice(11,13))+parseInt(w.startDate.slice(14,16))/60);
-  const wrkSD=wrkHrs.length>1?stddev(wrkHrs)*60:null;
-  $('c-stack').innerHTML=
-    cMetric('Bedtime swings by',Math.round(meta.onsetSdMin),'min','Night to night. Under 30 min means your body clock is anchored.',meta.onsetSdMin)+
-    cMetric('Wake time swings by',Math.round(meta.wakeSdMin),'min','Consistent wake time is the strongest circadian anchor you have.',meta.wakeSdMin)+
-    (wrkSD?cMetric('Workout timing swings by',Math.round(wrkSD),'min','Training at the same time each day reinforces your rhythm.',wrkSD):'');
-
-  // ── Correlation ──
-  if(meta.bestRhr&&meta.roughRhr){
-    $('corr-best-rhr').textContent=meta.bestRhr.toFixed(1)+' bpm';
-    $('corr-rough-rhr').textContent=meta.roughRhr.toFixed(1)+' bpm';
-    $('corr-best-n').textContent=meta.bestN;
-    $('corr-rough-n').textContent=meta.roughN;
-    $('corr-delta').textContent='+'+meta.deltaRhr;
-    $('corr-insight').innerHTML=`<strong>When you sleep at your usual time and get enough rest, your heart works measurably less hard the next morning.</strong> That +${meta.deltaRhr} bpm is your body's recovery signal — a lower resting heart rate means your cardiovascular system had a full night to repair. WHOOP and most recovery research treat any elevation above your personal baseline as incomplete recovery, which shows up as reduced focus and output throughout the day.
-      <div class="corr-cta">Your target window: <strong style="margin:0 4px">${fmtHour((meta.medianOnset-0.5)%24)} – ${fmtHour((meta.medianOnset+0.5)%24)}</strong> — that's when your body expects to be asleep.</div>`;
-  }
+  // ── Signal Cards ──
+  buildSignalCards(meta, nights, getProfile());
 
   // ── Sleep history ──
   $('b-sleep').textContent=`${meta.totalNights} nights`;
