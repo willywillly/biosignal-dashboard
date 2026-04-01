@@ -1541,7 +1541,7 @@ function _buildNight(group) {
   };
 }
 
-function _computeMeta(nights, hrReadings, workoutRaw) {
+function _computeMeta(nights, hrReadings, workoutRaw, extra) {
   const onsetNorms = nights.map(n => n.onsetNorm);
   const wakeHours  = nights.map(n => n.wakeHour);
   const sleepHrArr = nights.map(n => n.sleepHrs);
@@ -1621,22 +1621,124 @@ function _computeMeta(nights, hrReadings, workoutRaw) {
   workoutWindows.sort((a, b) => (a.avgRhrControlled ?? a.avgRhr ?? 999) - (b.avgRhrControlled ?? b.avgRhr ?? 999));
   workoutWindows.forEach((w, i) => { w.rank = i; });
 
+  // ── Extra signals ─────────────────────────────────────────────────────────
+  const {
+    stepsRaw        = [],
+    activeEnergyRaw = [],
+    mindfulRaw      = [],
+    weightRaw       = [],
+    hrvRaw          = [],
+    hasSleepStages  = false,
+  } = extra || {};
+
+  function _sumByDay(records) {
+    const byDay = {};
+    for (const r of records) {
+      const d = r.startDate.slice(0, 10);
+      byDay[d] = (byDay[d] || 0) + r.value;
+    }
+    return byDay;
+  }
+
+  const stepsByDay      = _sumByDay(stepsRaw);
+  const stepVals        = Object.values(stepsByDay);
+  const avgDailySteps   = stepVals.length > 0 ? Math.round(stepVals.reduce((s, v) => s + v, 0) / stepVals.length) : null;
+  const lowActivityDays = Object.entries(stepsByDay).filter(([, v]) => v < 3000).map(([d]) => d);
+
+  const energyVals        = Object.values(_sumByDay(activeEnergyRaw));
+  const avgActiveCalories = energyVals.length > 0 ? Math.round(energyVals.reduce((s, v) => s + v, 0) / energyVals.length) : null;
+
+  const avgHRV = hrvRaw.length > 0
+    ? parseFloat((hrvRaw.reduce((s, r) => s + r.value, 0) / hrvRaw.length).toFixed(1))
+    : null;
+
+  const mindfulByDay = {};
+  for (const r of mindfulRaw) {
+    const d = r.startDate.slice(0, 10);
+    mindfulByDay[d] = (mindfulByDay[d] || 0) + r.durationMin;
+  }
+  const mindfulVals       = Object.values(mindfulByDay);
+  const avgMindfulMinutes = mindfulVals.length > 0
+    ? parseFloat((mindfulVals.reduce((s, v) => s + v, 0) / mindfulVals.length).toFixed(1))
+    : null;
+
+  let weightTrend = null;
+  if (weightRaw.length >= 4) {
+    const ws   = [...weightRaw].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const half = Math.floor(ws.length / 2);
+    const avgF = ws.slice(0, half).reduce((s, r) => s + r.value, 0) / half;
+    const avgL = ws.slice(-half).reduce((s, r) => s + r.value, 0) / half;
+    const diff = avgL - avgF;
+    weightTrend = diff > 0.5 ? 'gaining' : diff < -0.5 ? 'losing' : 'stable';
+  }
+
+  const nightsWithRhrArr = nights.filter(n => n.rhr !== null);
+  let rhrTrend = null;
+  if (nightsWithRhrArr.length >= 6) {
+    const half = Math.floor(nightsWithRhrArr.length / 2);
+    const avgF = nightsWithRhrArr.slice(0, half).reduce((s, n) => s + n.rhr, 0) / half;
+    const avgL = nightsWithRhrArr.slice(-half).reduce((s, n) => s + n.rhr, 0) / half;
+    const diff = avgL - avgF;
+    rhrTrend = diff < -1 ? 'improving' : diff > 1 ? 'degrading' : 'stable';
+  }
+
+  const allSrcNames = [
+    ...hrReadings.map(h => h.sourceName || ''),
+    ...workoutRaw.map(w => w.sourceName || ''),
+  ];
+  const hasWatch    = allSrcNames.some(s => /watch/i.test(s));
+  const hasWhoop    = allSrcNames.some(s => /whoop/i.test(s));
+  const hasWorkouts = workoutRaw.length > 0;
+  const hasSteps    = stepsRaw.length > 0;
+  const hasHRVData  = hrvRaw.length > 0;
+
+  const allDates = [
+    ...nights.map(n => n.wakeDate),
+    ...Object.keys(stepsByDay),
+    ...Object.keys(mindfulByDay),
+  ].filter(Boolean);
+  let daysAvailable = 0;
+  if (allDates.length > 0) {
+    const ds = [...allDates].sort();
+    daysAvailable = Math.round((new Date(ds[ds.length - 1]) - new Date(ds[0])) / 86400000) + 1;
+  }
+
+  const dataProfile = {
+    hasWatch,
+    hasWhoop,
+    hasSleepStages,
+    hasHRV:             hasHRVData,
+    hasWorkouts,
+    hasSteps,
+    primarySleepSource: hasSleepStages ? 'Asleep' : nights.length > 0 ? 'InBed' : 'none',
+    nightsAvailable:    nights.length,
+    daysAvailable,
+  };
+
   return {
-    totalNights:    nights.length,
+    totalNights:     nights.length,
     medianOnset,
-    avgSleepHrs:    parseFloat(avgSleepHrs.toFixed(3)),
-    medianDuration: parseFloat(_median(sleepHrArr).toFixed(3)),
-    onsetSdMin:     parseFloat(onsetSdMin.toFixed(2)),
-    wakeSdMin:     parseFloat(wakeSdMin.toFixed(2)),
-    avgWakeHour:   parseFloat(avgWakeHour.toFixed(4)),
-    jetlagMin:     parseFloat(jetlagMin.toFixed(2)),
+    avgSleepHrs:     parseFloat(avgSleepHrs.toFixed(3)),
+    medianDuration:  parseFloat(_median(sleepHrArr).toFixed(3)),
+    onsetSdMin:      parseFloat(onsetSdMin.toFixed(2)),
+    wakeSdMin:       parseFloat(wakeSdMin.toFixed(2)),
+    avgWakeHour:     parseFloat(avgWakeHour.toFixed(4)),
+    jetlagMin:       parseFloat(jetlagMin.toFixed(2)),
     bestRhr,
     roughRhr,
-    bestN:         consistent.length,
-    roughN:        rough.length,
+    bestN:           consistent.length,
+    roughN:          rough.length,
     deltaRhr,
-    workoutWindows: workoutWindows.length > 0 ? workoutWindows : null,
-    workoutTagged:  workoutTagged.length  > 0 ? workoutTagged  : null,
+    workoutWindows:  workoutWindows.length > 0 ? workoutWindows : null,
+    workoutTagged:   workoutTagged.length  > 0 ? workoutTagged  : null,
+    avgDailySteps,
+    avgActiveCalories,
+    lowActivityDays,
+    avgHRV,
+    avgMindfulMinutes,
+    weightTrend,
+    rhrTrend,
+    dataProfile,
   };
 }
 
@@ -1663,11 +1765,21 @@ async function parseAppleHealthFile(file) {
     throw new Error('The file appears to be empty or corrupted.');
 
   // ── Extract records ─────────────────────────────────────────────────
-  const SLEEP_TYPE = 'HKCategoryTypeIdentifierSleepAnalysis';
-  const HR_TYPE    = 'HKQuantityTypeIdentifierHeartRate';
+  const SLEEP_TYPE    = 'HKCategoryTypeIdentifierSleepAnalysis';
+  const HR_TYPE       = 'HKQuantityTypeIdentifierHeartRate';
+  const STEPS_TYPE    = 'HKQuantityTypeIdentifierStepCount';
+  const ACTIVE_E_TYPE = 'HKQuantityTypeIdentifierActiveEnergyBurned';
+  const MINDFUL_TYPE  = 'HKCategoryTypeIdentifierMindfulSession';
+  const WEIGHT_TYPE   = 'HKQuantityTypeIdentifierBodyMass';
+  const HRV_TYPE      = 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN';
 
-  const sleepSegs  = [];
-  const hrReadings = [];
+  const sleepSegs       = [];
+  const hrReadings      = [];
+  const stepsRaw        = [];
+  const activeEnergyRaw = [];
+  const mindfulRaw      = [];
+  const weightRaw       = [];
+  const hrvRaw          = [];
 
   const inBedSegs = []; // fallback for iPhone-only users with no Asleep stages
 
@@ -1697,6 +1809,25 @@ async function parseAppleHealthFile(file) {
           _ts:        ts.getTime(),
         });
       }
+    } else if (type === STEPS_TYPE || type === ACTIVE_E_TYPE || type === WEIGHT_TYPE || type === HRV_TYPE) {
+      const val   = parseFloat(_getAttr(tag, 'value'));
+      const start = _getAttr(tag, 'startDate');
+      if (!isNaN(val) && val >= 0 && start) {
+        const rec = { startDate: start, endDate: _getAttr(tag, 'endDate'), value: val, unit: _getAttr(tag, 'unit') || '', sourceName: _getAttr(tag, 'sourceName') || '' };
+        if      (type === STEPS_TYPE)    stepsRaw.push(rec);
+        else if (type === ACTIVE_E_TYPE) activeEnergyRaw.push(rec);
+        else if (type === WEIGHT_TYPE)   weightRaw.push(rec);
+        else if (type === HRV_TYPE)      hrvRaw.push(rec);
+      }
+    } else if (type === MINDFUL_TYPE) {
+      const start = _getAttr(tag, 'startDate');
+      const end   = _getAttr(tag, 'endDate');
+      if (start && end) {
+        const s = _parseAHDate(start), e = _parseAHDate(end);
+        if (s && e && e > s) {
+          mindfulRaw.push({ startDate: start, endDate: end, durationMin: (e - s) / 60000, sourceName: _getAttr(tag, 'sourceName') || '' });
+        }
+      }
     }
   }
 
@@ -1717,6 +1848,9 @@ async function parseAppleHealthFile(file) {
   }
 
   // ── Group sleep segments into nights ────────────────────────────────
+  // Track whether we got explicit Asleep stages (Watch/WHOOP) or will fall back to InBed.
+  const hasSleepStages = sleepSegs.length > 0;
+
   // Fallback: if no explicit Asleep stages found, use InBed records instead.
   // This covers iPhone-only users (no Apple Watch) whose Health app only
   // writes HKCategoryValueSleepAnalysisInBed rather than stage-specific values.
@@ -1768,7 +1902,7 @@ async function parseAppleHealthFile(file) {
     night.deviationMin = parseFloat(((night.onsetNorm - medianOnset) * 60).toFixed(1));
   }
 
-  const meta = _computeMeta(nights, hrReadings, workoutRaw);
+  const meta = _computeMeta(nights, hrReadings, workoutRaw, { stepsRaw, activeEnergyRaw, mindfulRaw, weightRaw, hrvRaw, hasSleepStages });
 
   // Strip internal timestamp fields before returning
   nights.forEach(n => { delete n._onsetMs; delete n._wakeMs; });
@@ -1843,9 +1977,14 @@ async function startAnalysis() {
 
   // ── Console diagnostics ──────────────────────────────────────────────
   const profile = getProfile();
-  console.log(`[Cadence] Parsing: user file (${window._pendingFile.name})`);
-  console.log(`[Cadence] Nights found: ${meta.totalNights}`);
-  console.log(`[Cadence] Workouts found: ${workoutRaw.length}`);
+  console.log('--- [Cadence] Parse Summary ---');
+  console.log('Device profile:', meta.dataProfile.hasWhoop ? 'Whoop' : meta.dataProfile.hasWatch ? 'Apple Watch' : 'iPhone only');
+  console.log('Sleep source:', meta.dataProfile.primarySleepSource);
+  console.log('Nights parsed:', meta.totalNights);
+  console.log('Steps available:', meta.dataProfile.hasSteps);
+  console.log('HRV available:', meta.dataProfile.hasHRV);
+  console.log('Workouts available:', meta.dataProfile.hasWorkouts);
+  console.log('-------------------------------');
   console.log(`[Cadence] Using profile: ${profile?.goal || 'none'}`);
   console.log(`[Cadence] Calling Railway: yes`);
 
@@ -2276,6 +2415,37 @@ function buildSignalCards(meta, nights, profile) {
     ));
   }
 
+  // Card 5: Daily Activity — renders if steps are available and no workouts logged
+  if (meta.avgDailySteps != null && !meta.dataProfile?.hasWorkouts) {
+    const steps    = meta.avgDailySteps;
+    const stepsStr = steps.toLocaleString();
+    const col      = steps >= 8000 ? 'var(--green)' : steps >= 5000 ? 'var(--amber)' : 'var(--red)';
+    const insight  = steps < 5000
+      ? `Low movement days correlate with worse sleep onset in most users.`
+      : steps < 8000
+      ? `You're moderately active. A consistent daily walk can help stabilize sleep timing.`
+      : `Strong daily movement. Keep it consistent — activity anchors your circadian rhythm.`;
+    cards.push(sc(
+      'Daily Activity',
+      `${stepsStr} steps`,
+      col,
+      insight,
+      `<strong>A 20-minute walk before 6pm</strong> is the lowest-friction sleep aid that exists. Physical activity during daylight hours advances your circadian phase, making it easier to fall asleep at your target time. The timing matters as much as the activity itself.`
+    ));
+  }
+
+  // Card 6: Wind-Down Signal — renders if any mindful session data exists
+  if (meta.avgMindfulMinutes != null && meta.avgMindfulMinutes > 0) {
+    const mins = meta.avgMindfulMinutes.toFixed(0);
+    cards.push(sc(
+      'Wind-Down Signal',
+      `${mins} min / day`,
+      'var(--purple)',
+      `Mindful sessions in your data suggest you already have a wind-down instinct. Build on it.`,
+      `<strong>Move your mindfulness practice</strong> to within 45 minutes of your target bedtime. Practiced consistently, this creates a reliable sleep-onset cue — your nervous system learns the sequence and begins preparing for sleep before you even lie down.`
+    ));
+  }
+
   container.innerHTML = cards.join('');
 
   // Return the worst-severity action line for the hero card
@@ -2609,11 +2779,12 @@ async function fetchCadenceInsight(meta, score) {
     bedtime_variance_minutes: parseFloat(meta.onsetSdMin.toFixed(1)),
     social_jetlag_minutes:    parseFloat((meta.jetlagMin || 0).toFixed(1)),
     best_workout_window:      meta.workoutWindows?.[0]?.label?.toLowerCase() || 'unknown',
-    rhr_trend:                meta.deltaRhr > 0 ? 'improving' : 'stable',
+    rhr_trend:                meta.rhrTrend || (meta.deltaRhr > 0 ? 'improving' : 'stable'),
     nights_analyzed:          meta.totalNights,
     user_profile:             getProfile() || undefined,
     context_block:            buildContextBlock() || undefined,
     user_name:                localStorage.getItem(KEY_NAME) || undefined,
+    data_profile:             meta.dataProfile || undefined,
   };
 
   const headers = {
