@@ -1743,24 +1743,41 @@ function _computeMeta(nights, hrReadings, workoutRaw, extra) {
 }
 
 async function parseAppleHealthFile(file) {
+  // 1. File received
+  console.log('[Cadence] File received:', file ? file.name : 'NULL', file ? file.type : '', file ? (file.size/1024/1024).toFixed(1)+'MB' : '');
   if (!file) throw new Error('No file selected.');
 
   // ── Read XML text ───────────────────────────────────────────────────
+  // 2. Extension check
+  console.log('[Cadence] Extension check — .zip:', file.name.toLowerCase().endsWith('.zip'), '| .xml:', file.name.toLowerCase().endsWith('.xml'));
   let xmlText;
   if (file.name.toLowerCase().endsWith('.zip')) {
+    // 3a. JSZip available?
+    console.log('[Cadence] JSZip available:', !!window.JSZip);
     if (!window.JSZip) throw new Error('ZIP support failed to load. Try refreshing the page.');
+    // 3b. Attempting JSZip load
+    console.log('[Cadence] Attempting JSZip load...');
     const zip = await window.JSZip.loadAsync(file);
+    // 4. Log ALL zip contents
+    console.log('[Cadence] ZIP contents:', Object.keys(zip.files));
     let entry = zip.file('apple_health_export/export.xml');
+    console.log('[Cadence] Direct path lookup (apple_health_export/export.xml):', entry ? 'FOUND' : 'not found');
     if (!entry) {
       const matches = zip.file(/export\.xml$/i);
+      console.log('[Cadence] Regex search for export.xml — matches:', matches.map(f => f.name));
       entry = matches[0] || null;
     }
+    // 5. XML file search result
+    console.log('[Cadence] XML file found:', entry ? entry.name : 'NOT FOUND');
     if (!entry) throw new Error('No export.xml found inside the zip. Make sure you exported "All Health Data" from the iPhone Health app.');
     xmlText = await entry.async('text');
   } else {
+    console.log('[Cadence] Reading as plain XML file...');
     xmlText = await file.text();
   }
 
+  // 6. XML size check
+  console.log('[Cadence] XML size:', xmlText ? xmlText.length : 0, 'chars — passes 500-char check:', !!(xmlText && xmlText.length >= 500));
   if (!xmlText || xmlText.length < 500)
     throw new Error('The file appears to be empty or corrupted.');
 
@@ -1848,6 +1865,9 @@ async function parseAppleHealthFile(file) {
   }
 
   // ── Group sleep segments into nights ────────────────────────────────
+  // 7. Sleep records found
+  console.log('[Cadence] Sleep records found — Asleep segs:', sleepSegs.length, '| InBed segs:', inBedSegs.length, '| HR readings:', hrReadings.length);
+
   // Track whether we got explicit Asleep stages (Watch/WHOOP) or will fall back to InBed.
   const hasSleepStages = sleepSegs.length > 0;
 
@@ -1859,8 +1879,11 @@ async function parseAppleHealthFile(file) {
     console.log('[Cadence] No Asleep stages found — falling back to InBed records');
   }
 
-  if (sleepSegs.length === 0)
+  console.log('[Cadence] Sleep segs after fallback:', sleepSegs.length, '— about to group into nights');
+  if (sleepSegs.length === 0) {
+    console.log('[Cadence] ERROR TRIGGERED AT: no sleep segs after fallback', new Error().stack);
     throw new Error('No sleep tracking data found. Make sure your Apple Watch or another sleep tracker was synced to the Health app before exporting.');
+  }
 
   sleepSegs.sort((a, b) => a.start - b.start);
 
@@ -1881,8 +1904,12 @@ async function parseAppleHealthFile(file) {
   const lastN = _buildNight(group);
   if (lastN) nights.push(lastN);
 
-  if (nights.length === 0)
+  // 8. Nights grouped
+  console.log('[Cadence] Nights grouped:', nights.length, '— sleep segs used:', sleepSegs.length);
+  if (nights.length === 0) {
+    console.log('[Cadence] ERROR TRIGGERED AT: 0 nights after grouping — all segments were <30 min', new Error().stack);
     throw new Error('Not enough sleep data found. Cadence needs at least one full night (30+ minutes) of sleep tracking.');
+  }
 
   nights.sort((a, b) => a._onsetMs - b._onsetMs);
 
@@ -1913,6 +1940,7 @@ async function parseAppleHealthFile(file) {
 
 // ── Screen transitions ─────────────────────────────────────────────────────
 async function startAnalysis() {
+  console.log('[Cadence] startAnalysis() called — _pendingFile:', window._pendingFile ? window._pendingFile.name : 'NULL');
   // Guard: if no file is staged this session something went wrong
   if (!window._pendingFile) {
     showDropError("No file selected. Please upload your Apple Health export first.");
@@ -1957,7 +1985,11 @@ async function startAnalysis() {
       clockMeta = meta; clockNights = nights;
       _rhrData = rhrRaw; _workoutData = workoutRaw;
     })
-    .catch(err => { parseError = err.message || 'Could not read file.'; });
+    .catch(err => {
+      parseError = err.message || 'Could not read file.';
+      console.log('[Cadence] ERROR TRIGGERED AT:', new Error().stack);
+      console.error('[Cadence] parseAppleHealthFile threw:', err);
+    });
 
   // Show the animation for at least 1.2 s while parsing
   await Promise.all([parsePromise, delay(1200)]);
@@ -2095,7 +2127,9 @@ async function showDashboard() {
 function validateFile(file) {
   if (!file) return null;
   const name = file.name.toLowerCase();
-  if (name.endsWith('.zip') || name.endsWith('.xml')) return 'ok';
+  console.log('[Cadence] validateFile:', file.name, '| type:', file.type, '| size:', (file.size/1024/1024).toFixed(1)+'MB');
+  console.log('[Cadence] Extension check — .zip:', name.endsWith('.zip'), '| .xml:', name.endsWith('.xml'));
+  if (name.endsWith('.zip') || name.endsWith('.xml')) { console.log('[Cadence] validateFile result: ok'); return 'ok'; }
   if (name.endsWith('.pdf') || name.endsWith('.jpg') || name.endsWith('.png'))
     return 'That looks like a ' + name.split('.').pop().toUpperCase() + ' file. Export All Health Data from the Health app to get a .zip file.';
   return 'That doesn\'t look like an Apple Health export. You need a .zip or .xml file — export it from the Health app on your iPhone.';
@@ -2124,14 +2158,18 @@ landingInner.addEventListener('drop', e => {
   e.preventDefault();
   landingInner.style.opacity = '';
   const file = e.dataTransfer.files[0];
+  console.log('[Cadence] landing drop fired — file:', file ? file.name : 'NONE');
   const result = validateFile(file);
+  console.log('[Cadence] landing drop validateFile result:', result);
   if (result === 'ok' || !file) { window._pendingFile = file; handleFileReady(); return; }
   showDropError(result);
 });
 
 $('file-input').addEventListener('change', e => {
   const file = e.target.files[0];
+  console.log('[Cadence] file-input change fired — file:', file ? file.name : 'NONE');
   const result = validateFile(file);
+  console.log('[Cadence] file-input validateFile result:', result);
   if (result === 'ok' || !file) { window._pendingFile = file; handleFileReady(); return; }
   e.target.value = '';
   showDropError(result);
