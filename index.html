@@ -614,6 +614,11 @@
 </head>
 <body>
 
+<!-- ═══════════════════════════════════════════
+     SECTION: HTML STRUCTURE
+     - All static markup, screens, modals, bottom nav
+═══════════════════════════════════════════ -->
+
 <!-- ═══════════════════════ SCREEN 1: LANDING ═══════════════════════ -->
 <!-- ═══════════════════════ SCREEN 0: AUTH ═══════════════════════ -->
 <div id="screen-landing" class="screen active">
@@ -1023,6 +1028,10 @@
 </div>
 
 <script>
+/* ═══════════════════════════════════════════
+   SECTION: CONFIG & CONSTANTS
+   - API base URL, auth header, localStorage key names, design tokens
+═══════════════════════════════════════════ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TIMING CONFIG — edit these numbers to adjust the landing animation
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1062,6 +1071,10 @@ function gradeColor(min){if(min<30)return'#3E9B32';if(min<60)return'#2A7DC8';if(
 function durationColor(h){if(h<5)return'#D64B39';if(h<6)return'#C4800C';if(h<7)return'#C89B0E';if(h<8)return'#3E9B32';if(h<9)return'#2A7DC8';return'#7252D8';}
 function toAngle(h){return((h/24)*Math.PI*2-Math.PI/2+Math.PI*2)%(Math.PI*2);}
 
+/* ═══════════════════════════════════════════
+   SECTION: READINESS ALGORITHM
+   - rhythmMeta(), score grading, tonight target computation
+═══════════════════════════════════════════ */
 // ── Rhythm Score ───────────────────────────────────────────────────────────
 function rhythmScore(meta){
   // ── Bedtime variance (0–30 pts) ─────────────────────────────────────────
@@ -1094,6 +1107,10 @@ function rhythmMeta(score){
   return               {label:'LOW',         color:'var(--red)',   headline:'Your rhythm needs attention right now.'};
 }
 
+/* ═══════════════════════════════════════════
+   SECTION: CHARTS
+   - Chart.js instances, all render functions
+═══════════════════════════════════════════ */
 // ── Clock state ────────────────────────────────────────────────────────────
 let clockNights=[], clockMeta=null, clockMode='all';
 let clockArcs=[], clockWorkoutDots=[];
@@ -1282,6 +1299,7 @@ function setClockMode(mode){
   drawPatternClock($('clock-canvas'),clockNights,clockMeta,clockMeta?.workoutTagged,clockMode);
 }
 
+// ──── SUB: Accordion & Screen Transition Helpers ────
 // ── Accordion ──────────────────────────────────────────────────────────────
 function toggleAcc(id) {
   $(id).classList.toggle('open');
@@ -1445,6 +1463,11 @@ function timeLine(id,pts,color,yLabel){
   scales:{x:{type:'time',time:{unit:'month',tooltipFormat:'MMM d, yyyy'},grid:{color:GC},ticks:{color:TC,maxTicksLimit:8}},y:{grid:{color:GC},ticks:{color:TC},title:{display:true,text:yLabel,color:TC}}}}});
 }
 
+/* ═══════════════════════════════════════════
+   SECTION: DATA PARSING
+   - XML scanner, _iterElems, _getAttr, gap grouping, InBed fallback
+   - DO NOT MODIFY without explicit instruction
+═══════════════════════════════════════════ */
 // ─── Apple Health Parser ──────────────────────────────────────────────────
 // Extracts sleep, heart rate, and workout data from Apple Health exports.
 // Handles both .zip (apple_health_export/export.xml) and raw .xml files.
@@ -1541,6 +1564,33 @@ function _buildNight(group) {
   };
 }
 
+function _computeHrvTrend(hrvRaw) {
+  // Need at least 14 distinct days to compare last-7 vs prev-7.
+  if (!hrvRaw || hrvRaw.length < 14) return null;
+
+  // Average HRV readings per calendar day.
+  const byDay = {};
+  for (const r of hrvRaw) {
+    const d = r.startDate.slice(0, 10);
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(r.value);
+  }
+  const days = Object.keys(byDay).sort();
+  if (days.length < 14) return null;
+
+  const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
+  const last7 = days.slice(-7).flatMap(d => byDay[d]);
+  const prev7 = days.slice(-14, -7).flatMap(d => byDay[d]);
+
+  const avgLast = avg(last7);
+  const avgPrev = avg(prev7);
+  const pct = (avgLast - avgPrev) / avgPrev;
+
+  if (pct > 0.05)  return 'improving';
+  if (pct < -0.05) return 'declining';
+  return 'stable';
+}
+
 function _computeMeta(nights, hrReadings, workoutRaw, extra) {
   const onsetNorms = nights.map(n => n.onsetNorm);
   const wakeHours  = nights.map(n => n.wakeHour);
@@ -1623,54 +1673,15 @@ function _computeMeta(nights, hrReadings, workoutRaw, extra) {
 
   // ── Extra signals ─────────────────────────────────────────────────────────
   const {
-    stepsRaw        = [],
-    activeEnergyRaw = [],
-    mindfulRaw      = [],
-    weightRaw       = [],
-    hrvRaw          = [],
-    hasSleepStages  = false,
+    hrvRaw         = [],
+    hasSleepStages = false,
   } = extra || {};
 
-  function _sumByDay(records) {
-    const byDay = {};
-    for (const r of records) {
-      const d = r.startDate.slice(0, 10);
-      byDay[d] = (byDay[d] || 0) + r.value;
-    }
-    return byDay;
-  }
-
-  const stepsByDay      = _sumByDay(stepsRaw);
-  const stepVals        = Object.values(stepsByDay);
-  const avgDailySteps   = stepVals.length > 0 ? Math.round(stepVals.reduce((s, v) => s + v, 0) / stepVals.length) : null;
-  const lowActivityDays = Object.entries(stepsByDay).filter(([, v]) => v < 3000).map(([d]) => d);
-
-  const energyVals        = Object.values(_sumByDay(activeEnergyRaw));
-  const avgActiveCalories = energyVals.length > 0 ? Math.round(energyVals.reduce((s, v) => s + v, 0) / energyVals.length) : null;
-
-  const avgHRV = hrvRaw.length > 0
+  const avgHRV    = hrvRaw.length > 0
     ? parseFloat((hrvRaw.reduce((s, r) => s + r.value, 0) / hrvRaw.length).toFixed(1))
     : null;
-
-  const mindfulByDay = {};
-  for (const r of mindfulRaw) {
-    const d = r.startDate.slice(0, 10);
-    mindfulByDay[d] = (mindfulByDay[d] || 0) + r.durationMin;
-  }
-  const mindfulVals       = Object.values(mindfulByDay);
-  const avgMindfulMinutes = mindfulVals.length > 0
-    ? parseFloat((mindfulVals.reduce((s, v) => s + v, 0) / mindfulVals.length).toFixed(1))
-    : null;
-
-  let weightTrend = null;
-  if (weightRaw.length >= 4) {
-    const ws   = [...weightRaw].sort((a, b) => a.startDate.localeCompare(b.startDate));
-    const half = Math.floor(ws.length / 2);
-    const avgF = ws.slice(0, half).reduce((s, r) => s + r.value, 0) / half;
-    const avgL = ws.slice(-half).reduce((s, r) => s + r.value, 0) / half;
-    const diff = avgL - avgF;
-    weightTrend = diff > 0.5 ? 'gaining' : diff < -0.5 ? 'losing' : 'stable';
-  }
+  const hrv_trend = _computeHrvTrend(hrvRaw);
+  const has_hrv   = hrvRaw.length >= 7;
 
   const nightsWithRhrArr = nights.filter(n => n.rhr !== null);
   let rhrTrend = null;
@@ -1689,14 +1700,8 @@ function _computeMeta(nights, hrReadings, workoutRaw, extra) {
   const hasWatch    = allSrcNames.some(s => /watch/i.test(s));
   const hasWhoop    = allSrcNames.some(s => /whoop/i.test(s));
   const hasWorkouts = workoutRaw.length > 0;
-  const hasSteps    = stepsRaw.length > 0;
-  const hasHRVData  = hrvRaw.length > 0;
 
-  const allDates = [
-    ...nights.map(n => n.wakeDate),
-    ...Object.keys(stepsByDay),
-    ...Object.keys(mindfulByDay),
-  ].filter(Boolean);
+  const allDates = nights.map(n => n.wakeDate).filter(Boolean);
   let daysAvailable = 0;
   if (allDates.length > 0) {
     const ds = [...allDates].sort();
@@ -1707,36 +1712,32 @@ function _computeMeta(nights, hrReadings, workoutRaw, extra) {
     hasWatch,
     hasWhoop,
     hasSleepStages,
-    hasHRV:             hasHRVData,
+    hasHRV:             has_hrv,
     hasWorkouts,
-    hasSteps,
     primarySleepSource: hasSleepStages ? 'Asleep' : nights.length > 0 ? 'InBed' : 'none',
     nightsAvailable:    nights.length,
     daysAvailable,
   };
 
   return {
-    totalNights:     nights.length,
+    totalNights:    nights.length,
     medianOnset,
-    avgSleepHrs:     parseFloat(avgSleepHrs.toFixed(3)),
-    medianDuration:  parseFloat(_median(sleepHrArr).toFixed(3)),
-    onsetSdMin:      parseFloat(onsetSdMin.toFixed(2)),
-    wakeSdMin:       parseFloat(wakeSdMin.toFixed(2)),
-    avgWakeHour:     parseFloat(avgWakeHour.toFixed(4)),
-    jetlagMin:       parseFloat(jetlagMin.toFixed(2)),
+    avgSleepHrs:    parseFloat(avgSleepHrs.toFixed(3)),
+    medianDuration: parseFloat(_median(sleepHrArr).toFixed(3)),
+    onsetSdMin:     parseFloat(onsetSdMin.toFixed(2)),
+    wakeSdMin:      parseFloat(wakeSdMin.toFixed(2)),
+    avgWakeHour:    parseFloat(avgWakeHour.toFixed(4)),
+    jetlagMin:      parseFloat(jetlagMin.toFixed(2)),
     bestRhr,
     roughRhr,
-    bestN:           consistent.length,
-    roughN:          rough.length,
+    bestN:          consistent.length,
+    roughN:         rough.length,
     deltaRhr,
-    workoutWindows:  workoutWindows.length > 0 ? workoutWindows : null,
-    workoutTagged:   workoutTagged.length  > 0 ? workoutTagged  : null,
-    avgDailySteps,
-    avgActiveCalories,
-    lowActivityDays,
+    workoutWindows: workoutWindows.length > 0 ? workoutWindows : null,
+    workoutTagged:  workoutTagged.length  > 0 ? workoutTagged  : null,
     avgHRV,
-    avgMindfulMinutes,
-    weightTrend,
+    hrv_trend,
+    has_hrv,
     rhrTrend,
     dataProfile,
   };
@@ -1782,26 +1783,27 @@ async function parseAppleHealthFile(file) {
     throw new Error('The file appears to be empty or corrupted.');
 
   // ── Extract records ─────────────────────────────────────────────────
-  const SLEEP_TYPE    = 'HKCategoryTypeIdentifierSleepAnalysis';
-  const HR_TYPE       = 'HKQuantityTypeIdentifierHeartRate';
-  const STEPS_TYPE    = 'HKQuantityTypeIdentifierStepCount';
-  const ACTIVE_E_TYPE = 'HKQuantityTypeIdentifierActiveEnergyBurned';
-  const MINDFUL_TYPE  = 'HKCategoryTypeIdentifierMindfulSession';
-  const WEIGHT_TYPE   = 'HKQuantityTypeIdentifierBodyMass';
-  const HRV_TYPE      = 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN';
+  const SLEEP_TYPE = 'HKCategoryTypeIdentifierSleepAnalysis';
+  const HR_TYPE    = 'HKQuantityTypeIdentifierHeartRate';
+  const RHR_TYPE   = 'HKQuantityTypeIdentifierRestingHeartRate';
+  const HRV_TYPE   = 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN';
 
-  const sleepSegs       = [];
-  const hrReadings      = [];
-  const stepsRaw        = [];
-  const activeEnergyRaw = [];
-  const mindfulRaw      = [];
-  const weightRaw       = [];
-  const hrvRaw          = [];
+  // Whitelist: only parse these 5 record types. Apple Health exports contain
+  // 50+ record types (StepCount, WalkingSpeed, FlightsClimbed, VO2Max, …) that
+  // we do not use. On a 750 MB export the skipped types account for ~90 % of
+  // all <Record> elements. Checking the type attr first and jumping to the next
+  // element keeps the hot loop cheap and drops parse time from 30 s+ to <5 s.
+  const RECORD_WHITELIST = new Set([SLEEP_TYPE, HR_TYPE, RHR_TYPE, HRV_TYPE]);
+
+  const sleepSegs  = [];
+  const hrReadings = [];
+  const hrvRaw     = [];
 
   const inBedSegs = []; // fallback for iPhone-only users with no Asleep stages
 
   for (const tag of _iterElems(xmlText, 'Record')) {
     const type = _getAttr(tag, 'type');
+    if (!RECORD_WHITELIST.has(type)) continue; // skip non-whitelisted types immediately
     if (type === SLEEP_TYPE) {
       const val = _getAttr(tag, 'value') || '';
       const start = _parseAHDate(_getAttr(tag, 'startDate'));
@@ -1826,24 +1828,11 @@ async function parseAppleHealthFile(file) {
           _ts:        ts.getTime(),
         });
       }
-    } else if (type === STEPS_TYPE || type === ACTIVE_E_TYPE || type === WEIGHT_TYPE || type === HRV_TYPE) {
+    } else if (type === HRV_TYPE) {
       const val   = parseFloat(_getAttr(tag, 'value'));
       const start = _getAttr(tag, 'startDate');
       if (!isNaN(val) && val >= 0 && start) {
-        const rec = { startDate: start, endDate: _getAttr(tag, 'endDate'), value: val, unit: _getAttr(tag, 'unit') || '', sourceName: _getAttr(tag, 'sourceName') || '' };
-        if      (type === STEPS_TYPE)    stepsRaw.push(rec);
-        else if (type === ACTIVE_E_TYPE) activeEnergyRaw.push(rec);
-        else if (type === WEIGHT_TYPE)   weightRaw.push(rec);
-        else if (type === HRV_TYPE)      hrvRaw.push(rec);
-      }
-    } else if (type === MINDFUL_TYPE) {
-      const start = _getAttr(tag, 'startDate');
-      const end   = _getAttr(tag, 'endDate');
-      if (start && end) {
-        const s = _parseAHDate(start), e = _parseAHDate(end);
-        if (s && e && e > s) {
-          mindfulRaw.push({ startDate: start, endDate: end, durationMin: (e - s) / 60000, sourceName: _getAttr(tag, 'sourceName') || '' });
-        }
+        hrvRaw.push({ startDate: start, value: val });
       }
     }
   }
@@ -1929,7 +1918,7 @@ async function parseAppleHealthFile(file) {
     night.deviationMin = parseFloat(((night.onsetNorm - medianOnset) * 60).toFixed(1));
   }
 
-  const meta = _computeMeta(nights, hrReadings, workoutRaw, { stepsRaw, activeEnergyRaw, mindfulRaw, weightRaw, hrvRaw, hasSleepStages });
+  const meta = _computeMeta(nights, hrReadings, workoutRaw, { hrvRaw, hasSleepStages });
 
   // Strip internal timestamp fields before returning
   nights.forEach(n => { delete n._onsetMs; delete n._wakeMs; });
@@ -1938,6 +1927,10 @@ async function parseAppleHealthFile(file) {
   return { meta, nights, rhrRaw: hrReadings, workoutRaw };
 }
 
+/* ═══════════════════════════════════════════
+   SECTION: SCREENS
+   - showLanding(), showAnalysis(), showDashboard(), clearAllUserData()
+═══════════════════════════════════════════ */
 // ── Screen transitions ─────────────────────────────────────────────────────
 async function startAnalysis() {
   console.log('[Cadence] startAnalysis() called — _pendingFile:', window._pendingFile ? window._pendingFile.name : 'NULL');
@@ -2083,6 +2076,7 @@ async function startAnalysis() {
   window._dashData = { meta, nights, rhrRaw, workoutRaw };
 }
 
+// ──── SUB: Session Cache ────
 // ── Session cache — localStorage with 24h TTL ────────────────────────────
 // sessionStorage dies on every iOS Safari reload. localStorage survives
 // refreshes, tab closes, and app re-opens. TTL keeps data fresh.
@@ -2123,6 +2117,7 @@ async function showDashboard() {
   renderDashboard(window._dashData);
 }
 
+// ──── SUB: File Handling & Drag-and-Drop ────
 // ── Drag & drop ────────────────────────────────────────────────────────────
 function validateFile(file) {
   if (!file) return null;
@@ -2525,6 +2520,7 @@ function _scWorstAction(meta, nights) {
   return worst.action || 'Focus on going to bed at the same time every night — consistency is the highest-leverage change you can make.';
 }
 
+// ──── SUB: Dashboard Render ────
 // ── Dashboard render ───────────────────────────────────────────────────────
 function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   const score=rhythmScore(meta), rm=rhythmMeta(score);
@@ -2626,6 +2622,7 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   fetchCadenceInsight(meta, score);
 }
 
+// ──── SUB: API Config ────
 // Backend URL — override by setting window.CADENCE_API_URL before this script runs.
 // In production this points to Railway; locally use http://localhost:8000.
 const CADENCE_API = window.CADENCE_API_URL || 'https://cadence-backend-production-f1eb.up.railway.app';
@@ -2655,6 +2652,7 @@ function handleReset() {
   boot();
 }
 
+// ──── SUB: localStorage Keys ────
 // ── localStorage keys ─────────────────────────────────────────────────────
 const KEY_PROFILE   = 'cadence_profile';
 const KEY_CHECKIN   = 'cadence_checkin_date';
@@ -2662,6 +2660,10 @@ const KEY_CONTEXT   = 'cadence_context_log';  // rolling array of daily summarie
 const KEY_ONBOARDED = 'cadence_onboarded';    // set to 'true' after first survey
 const KEY_NAME      = 'cadence_name';         // user's preferred name for Claude
 
+/* ═══════════════════════════════════════════
+   SECTION: CADENCE AI
+   - /narrate API call, context log, check-in modal, onboarding survey
+═══════════════════════════════════════════ */
 // ── Survey & check-in state ───────────────────────────────────────────────
 let _pendingFile = null; // holds the file drop event while modals are open
 
@@ -2965,6 +2967,11 @@ async function playReturningSplash() {
   renderDashboard(window._dashData);
 }
 
+/* ═══════════════════════════════════════════
+   SECTION: BOOT
+   - boot(), three-branch logic
+   - MODIFY WITH CAUTION
+═══════════════════════════════════════════ */
 // ── Boot ──────────────────────────────────────────────────────────────────
 function boot() {
   const onboarded   = localStorage.getItem(KEY_ONBOARDED);

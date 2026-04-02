@@ -124,8 +124,38 @@ Each night has a `rhr` property = mean HR in 90-min window after wake time (true
 
 ---
 
+## FILE MAP — index.html (~2985 lines)
+
+| Section | Type | ~Line |
+|---------|------|-------|
+| HTML STRUCTURE | HTML comment | 617 |
+| CONFIG & CONSTANTS | JS block comment | 1031 |
+| READINESS ALGORITHM | JS block comment | 1071 |
+| CHARTS | JS block comment | 1103 |
+| DATA PARSING | JS block comment | 1459 |
+| SCREENS | JS block comment | 1952 |
+| CADENCE AI | JS block comment | 2680 |
+| BOOT | JS block comment | 2985 |
+
+### Sub-sections
+| Sub | Parent | ~Line |
+|-----|--------|-------|
+| Accordion & Screen Transition Helpers | CHARTS | 1291 |
+| Session Cache | SCREENS | 2097 |
+| File Handling & Drag-and-Drop | SCREENS | 2137 |
+| Dashboard Render | SCREENS | 2540 |
+| API Config | SCREENS | 2641 |
+| localStorage Keys | SCREENS | 2671 |
+
+### Notes
+- DATA PARSING (~1459): never modify _iterElems, _getAttr, gap grouping, InBed fallback without explicit instruction
+- API Config and localStorage Keys live physically inside SCREENS but are flagged as distinct sub-sections
+- Script sections use /* ═══ */ block comments, not HTML comments
+
+---
+
 ## NEXT TASK
-TBD — populate at start of next session.
+FILE MAP added. Workflow established. Awaiting next feature.
 
 ---
 
