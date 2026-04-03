@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.1/umd/index.js"></script>
   <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -1753,25 +1753,28 @@ async function parseAppleHealthFile(file) {
   console.log('[Cadence] Extension check — .zip:', file.name.toLowerCase().endsWith('.zip'), '| .xml:', file.name.toLowerCase().endsWith('.xml'));
   let xmlText;
   if (file.name.toLowerCase().endsWith('.zip')) {
-    // 3a. JSZip available?
-    console.log('[Cadence] JSZip available:', !!window.JSZip);
-    if (!window.JSZip) throw new Error('ZIP support failed to load. Try refreshing the page.');
-    // 3b. Attempting JSZip load
-    console.log('[Cadence] Attempting JSZip load...');
-    const zip = await window.JSZip.loadAsync(file);
+    // 3a. fflate available?
+    console.log('[Cadence] fflate available:', !!window.fflate);
+    if (!window.fflate) throw new Error('ZIP support failed to load. Try refreshing the page.');
+    // 3b. Attempting fflate unzip...
+    console.log('[Cadence] Attempting fflate unzip...');
+    const buf = await file.arrayBuffer();
+    const unzipped = await new Promise((resolve, reject) =>
+      fflate.unzip(new Uint8Array(buf), (err, data) => err ? reject(err) : resolve(data))
+    );
     // 4. Log ALL zip contents
-    console.log('[Cadence] ZIP contents:', Object.keys(zip.files));
-    let entry = zip.file('apple_health_export/export.xml');
-    console.log('[Cadence] Direct path lookup (apple_health_export/export.xml):', entry ? 'FOUND' : 'not found');
-    if (!entry) {
-      const matches = zip.file(/export\.xml$/i);
-      console.log('[Cadence] Regex search for export.xml — matches:', matches.map(f => f.name));
-      entry = matches[0] || null;
+    const fileNames = Object.keys(unzipped);
+    console.log('[Cadence] ZIP contents:', fileNames);
+    let entryName = fileNames.find(n => n === 'apple_health_export/export.xml');
+    console.log('[Cadence] Direct path lookup (apple_health_export/export.xml):', entryName ? 'FOUND' : 'not found');
+    if (!entryName) {
+      entryName = fileNames.find(n => /export\.xml$/i.test(n)) || null;
+      console.log('[Cadence] Regex search for export.xml — match:', entryName || 'none');
     }
     // 5. XML file search result
-    console.log('[Cadence] XML file found:', entry ? entry.name : 'NOT FOUND');
-    if (!entry) throw new Error('No export.xml found inside the zip. Make sure you exported "All Health Data" from the iPhone Health app.');
-    xmlText = await entry.async('text');
+    console.log('[Cadence] XML file found:', entryName || 'NOT FOUND');
+    if (!entryName) throw new Error('No export.xml found inside the zip. Make sure you exported "All Health Data" from the iPhone Health app.');
+    xmlText = new TextDecoder().decode(unzipped[entryName]);
   } else {
     console.log('[Cadence] Reading as plain XML file...');
     xmlText = await file.text();
