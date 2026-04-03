@@ -1973,9 +1973,9 @@ async function parseAppleHealthFile(file) {
       // Method 8 = deflate
       const inf = useAsync ? new fflate.AsyncInflate() : new fflate.Inflate();
       if (useAsync) {
-        inf.ondata = (err, chunk, final) => {
+        inf.ondata = (err, chunk) => {
           if (err) { reject(err); return; }
-          try { _processChunk(decoder.decode(chunk, { stream: !final })); if (final) resolve(); }
+          try { _processChunk(decoder.decode(chunk, { stream: true })); }
           catch (e) { reject(e); }
         };
       } else {
@@ -1984,7 +1984,7 @@ async function parseAppleHealthFile(file) {
           catch (e) { reject(e); }
         };
       }
-      try { inf.push(compressed, true); if (!useAsync) resolve(); }
+      try { inf.push(compressed, true); resolve(); }
       catch (e) { reject(e); }
     });
 
