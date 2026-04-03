@@ -1743,47 +1743,82 @@ function _computeMeta(nights, hrReadings, workoutRaw, extra) {
   };
 }
 
+// ─── ZIP Entry Locator ──────────────────────────────────────────────────────
+// Parses the ZIP central directory to find a specific entry's compressed-data
+// block without decompressing anything. Returns { dataOffset, compressedSize,
+// method } or null. nameOrPattern may be a string (exact) or RegExp.
+function _locateZipEntry(zipBytes, nameOrPattern) {
+  const dv  = new DataView(zipBytes.buffer, zipBytes.byteOffset, zipBytes.byteLength);
+  const len = zipBytes.length;
+
+  // Find End of Central Directory (EOCD) by scanning backwards.
+  // Signature: 0x06054b50. Max ZIP comment = 65535 bytes → scan last ~65 KB.
+  let eocd = -1;
+  for (let i = len - 22; i >= Math.max(0, len - 65558); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd === -1) return null;
+
+  const cdOffset = dv.getUint32(eocd + 16, true); // central dir start
+  const cdCount  = dv.getUint16(eocd + 10, true);  // entry count
+
+  const td = new TextDecoder('utf-8');
+  let pos = cdOffset;
+
+  for (let i = 0; i < cdCount; i++) {
+    if (pos + 46 > len || dv.getUint32(pos, true) !== 0x02014b50) break;
+
+    const method      = dv.getUint16(pos + 10, true);
+    let   compSize    = dv.getUint32(pos + 20, true);
+    const fnLen       = dv.getUint16(pos + 28, true);
+    const extraLen    = dv.getUint16(pos + 30, true);
+    const commentLen  = dv.getUint16(pos + 32, true);
+    const localOffset = dv.getUint32(pos + 42, true);
+
+    const filename = td.decode(zipBytes.subarray(pos + 46, pos + 46 + fnLen));
+    const matches  = typeof nameOrPattern === 'string'
+      ? filename === nameOrPattern
+      : nameOrPattern.test(filename);
+
+    if (matches) {
+      // Skip local file header (30 fixed bytes + filename + extra) to reach data.
+      const lfnLen    = dv.getUint16(localOffset + 26, true);
+      const lextraLen = dv.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + lfnLen + lextraLen;
+
+      // ZIP64: if compSize field == 0xFFFFFFFF, read actual value from extra.
+      let resolvedCompSize = compSize;
+      if (compSize === 0xFFFFFFFF) {
+        let ep = pos + 46 + fnLen, epEnd = ep + extraLen;
+        while (ep + 4 <= epEnd) {
+          const hTag = dv.getUint16(ep, true);
+          const hSz  = dv.getUint16(ep + 2, true);
+          if (hTag === 0x0001 && ep + 4 + hSz <= epEnd) {
+            // ZIP64 fields: [orig size 8B if needed][comp size 8B if needed]
+            const origSize32 = dv.getUint32(pos + 24, true);
+            const z64base    = ep + 4 + (origSize32 === 0xFFFFFFFF ? 8 : 0);
+            resolvedCompSize = Number(dv.getBigUint64(z64base, true));
+            break;
+          }
+          ep += 4 + hSz;
+        }
+      }
+
+      return { dataOffset: dataStart, compressedSize: resolvedCompSize, method };
+    }
+
+    pos += 46 + fnLen + extraLen + commentLen;
+  }
+  return null;
+}
+
 async function parseAppleHealthFile(file) {
   // 1. File received
   console.log('[Cadence] File received:', file ? file.name : 'NULL', file ? file.type : '', file ? (file.size/1024/1024).toFixed(1)+'MB' : '');
   if (!file) throw new Error('No file selected.');
 
-  // ── Read XML text ───────────────────────────────────────────────────
   // 2. Extension check
   console.log('[Cadence] Extension check — .zip:', file.name.toLowerCase().endsWith('.zip'), '| .xml:', file.name.toLowerCase().endsWith('.xml'));
-  let xmlText;
-  if (file.name.toLowerCase().endsWith('.zip')) {
-    // 3a. fflate available?
-    console.log('[Cadence] fflate available:', !!window.fflate);
-    if (!window.fflate) throw new Error('ZIP support failed to load. Try refreshing the page.');
-    // 3b. Attempting fflate unzip...
-    console.log('[Cadence] Attempting fflate unzip...');
-    const buf = await file.arrayBuffer();
-    const unzipped = await new Promise((resolve, reject) =>
-      fflate.unzip(new Uint8Array(buf), (err, data) => err ? reject(err) : resolve(data))
-    );
-    // 4. Log ALL zip contents
-    const fileNames = Object.keys(unzipped);
-    console.log('[Cadence] ZIP contents:', fileNames);
-    let entryName = fileNames.find(n => n === 'apple_health_export/export.xml');
-    console.log('[Cadence] Direct path lookup (apple_health_export/export.xml):', entryName ? 'FOUND' : 'not found');
-    if (!entryName) {
-      entryName = fileNames.find(n => /export\.xml$/i.test(n)) || null;
-      console.log('[Cadence] Regex search for export.xml — match:', entryName || 'none');
-    }
-    // 5. XML file search result
-    console.log('[Cadence] XML file found:', entryName || 'NOT FOUND');
-    if (!entryName) throw new Error('No export.xml found inside the zip. Make sure you exported "All Health Data" from the iPhone Health app.');
-    xmlText = new TextDecoder().decode(unzipped[entryName]);
-  } else {
-    console.log('[Cadence] Reading as plain XML file...');
-    xmlText = await file.text();
-  }
-
-  // 6. XML size check
-  console.log('[Cadence] XML size:', xmlText ? xmlText.length : 0, 'chars — passes 500-char check:', !!(xmlText && xmlText.length >= 500));
-  if (!xmlText || xmlText.length < 500)
-    throw new Error('The file appears to be empty or corrupted.');
 
   // ── Extract records ─────────────────────────────────────────────────
   const SLEEP_TYPE = 'HKCategoryTypeIdentifierSleepAnalysis';
@@ -1791,7 +1826,7 @@ async function parseAppleHealthFile(file) {
   const RHR_TYPE   = 'HKQuantityTypeIdentifierRestingHeartRate';
   const HRV_TYPE   = 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN';
 
-  // Whitelist: only parse these 5 record types. Apple Health exports contain
+  // Whitelist: only parse these record types. Apple Health exports contain
   // 50+ record types (StepCount, WalkingSpeed, FlightsClimbed, VO2Max, …) that
   // we do not use. On a 750 MB export the skipped types account for ~90 % of
   // all <Record> elements. Checking the type attr first and jumping to the next
@@ -1801,17 +1836,16 @@ async function parseAppleHealthFile(file) {
   const sleepSegs  = [];
   const hrReadings = [];
   const hrvRaw     = [];
+  const inBedSegs  = []; // fallback for iPhone-only users with no Asleep stages
+  const workoutRaw = [];
 
-  const inBedSegs = []; // fallback for iPhone-only users with no Asleep stages
-
-  for (const tag of _iterElems(xmlText, 'Record')) {
-    const type = _getAttr(tag, 'type');
-    if (!RECORD_WHITELIST.has(type)) continue; // skip non-whitelisted types immediately
+  // ── Per-tag handlers — shared by both ZIP and plain-XML paths ────────
+  function _onRecord(tag, type) {
     if (type === SLEEP_TYPE) {
-      const val = _getAttr(tag, 'value') || '';
+      const val   = _getAttr(tag, 'value') || '';
       const start = _parseAHDate(_getAttr(tag, 'startDate'));
       const end   = _parseAHDate(_getAttr(tag, 'endDate'));
-      if (!start || !end || end <= start) continue;
+      if (!start || !end || end <= start) return;
       // Prefer explicit asleep stages (Apple Watch, WHOOP, etc.)
       if (val.includes('Asleep') && !val.includes('Awake')) {
         sleepSegs.push({ start, end });
@@ -1840,8 +1874,7 @@ async function parseAppleHealthFile(file) {
     }
   }
 
-  const workoutRaw = [];
-  for (const tag of _iterElems(xmlText, 'Workout')) {
+  function _onWorkout(tag) {
     workoutRaw.push({
       startDate:             _getAttr(tag, 'startDate'),
       endDate:               _getAttr(tag, 'endDate'),
@@ -1854,6 +1887,126 @@ async function parseAppleHealthFile(file) {
       totalDistanceUnit:     _getAttr(tag, 'totalDistanceUnit'),
       sourceName:            _getAttr(tag, 'sourceName'),
     });
+  }
+
+  if (file.name.toLowerCase().endsWith('.zip')) {
+    // ── Path A: ZIP → streaming inflate ────────────────────────────────
+    // Never materialise the full XML string in memory. Instead:
+    //   1. Read the compressed ZIP (~28 MB typical) into an ArrayBuffer.
+    //   2. Parse the ZIP central directory to find export.xml's data offset.
+    //   3. Slice only that entry's compressed bytes and feed them through
+    //      fflate.AsyncInflate (raw deflate, runs in a worker → non-blocking).
+    //   4. Decode each decompressed chunk to text and scan for <Record/> and
+    //      <Workout/> tags on the fly — an 8 KB carry buffer bridges tags that
+    //      straddle chunk boundaries.
+    // Peak heap: ~30–50 MB instead of ~1.5 GB.
+    console.log('[Cadence] fflate available:', !!window.fflate);
+    if (!window.fflate) throw new Error('ZIP support failed to load. Try refreshing the page.');
+
+    const buf      = await file.arrayBuffer();
+    const zipBytes = new Uint8Array(buf);
+    console.log('[Cadence] Attempting streaming ZIP decompression...');
+
+    // Locate export.xml in the ZIP central directory (no decompression yet).
+    let entry = _locateZipEntry(zipBytes, 'apple_health_export/export.xml');
+    if (!entry) entry = _locateZipEntry(zipBytes, /export\.xml$/i);
+    console.log('[Cadence] export.xml entry:', entry
+      ? `dataOffset=${entry.dataOffset} compressedSize=${entry.compressedSize} method=${entry.method}`
+      : 'NOT FOUND');
+    if (!entry) throw new Error('No export.xml found inside the zip. Make sure you exported "All Health Data" from the iPhone Health app.');
+
+    // Slice only this entry's compressed bytes — no full-file decompression.
+    const compressed = zipBytes.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
+
+    // ── Streaming XML tag accumulator ───────────────────────────────────
+    // For each decoded text chunk: scan forward finding the nearest
+    // <Record .../> or <Workout .../> opening, extract the tag up to its
+    // self-closing />, dispatch to the appropriate handler, advance past it.
+    // Anything after the last complete tag is kept in `carry` (capped at
+    // CARRY_MAX) so tags that straddle chunk boundaries are never lost.
+    const CARRY_MAX = 8192; // 8 KB — comfortably larger than any single tag
+    let   carry     = '';
+
+    function _processChunk(text) {
+      const combined = carry + text;
+      let pos = 0;
+
+      while (true) {
+        const rIdx = combined.indexOf('<Record ',  pos);
+        const wIdx = combined.indexOf('<Workout ', pos);
+        if (rIdx === -1 && wIdx === -1) { pos = combined.length; break; }
+
+        let tagStart, isRecord;
+        if      (rIdx === -1) { tagStart = wIdx; isRecord = false; }
+        else if (wIdx === -1) { tagStart = rIdx; isRecord = true;  }
+        else { tagStart = Math.min(rIdx, wIdx); isRecord = rIdx <= wIdx; }
+
+        const tagEnd = combined.indexOf('/>', tagStart);
+        if (tagEnd === -1) break; // incomplete tag — defer to next chunk
+
+        const tag = combined.slice(tagStart, tagEnd + 2);
+        if (isRecord) {
+          const type = _getAttr(tag, 'type');
+          if (type && RECORD_WHITELIST.has(type)) _onRecord(tag, type);
+        } else {
+          _onWorkout(tag);
+        }
+        pos = tagEnd + 2;
+      }
+
+      // Keep unprocessed tail as carry — cap to bound memory.
+      const tail = combined.slice(pos);
+      carry = tail.length > CARRY_MAX ? tail.slice(-CARRY_MAX) : tail;
+    }
+
+    // Stream compressed bytes through fflate inflate (raw deflate = ZIP method 8).
+    // Prefer AsyncInflate (worker-based, non-blocking UI); fall back to sync Inflate.
+    const decoder  = new TextDecoder('utf-8');
+    const useAsync = typeof fflate.AsyncInflate === 'function';
+    await new Promise((resolve, reject) => {
+      if (entry.method === 0) {
+        // Method 0 = stored (no compression)
+        try { _processChunk(decoder.decode(compressed)); resolve(); }
+        catch (e) { reject(e); }
+        return;
+      }
+      // Method 8 = deflate
+      const inf = useAsync ? new fflate.AsyncInflate() : new fflate.Inflate();
+      if (useAsync) {
+        inf.ondata = (err, chunk, final) => {
+          if (err) { reject(err); return; }
+          try { _processChunk(decoder.decode(chunk, { stream: !final })); if (final) resolve(); }
+          catch (e) { reject(e); }
+        };
+      } else {
+        inf.ondata = (chunk, final) => {
+          try { _processChunk(decoder.decode(chunk, { stream: !final })); if (final) resolve(); }
+          catch (e) { reject(e); }
+        };
+      }
+      try { inf.push(compressed, true); if (!useAsync) resolve(); }
+      catch (e) { reject(e); }
+    });
+
+    console.log('[Cadence] Streaming decompression complete — compressedSize:', (entry.compressedSize/1024/1024).toFixed(1), 'MB');
+
+  } else {
+    // ── Path B: Plain XML → batch parse (small files, unchanged) ────────
+    console.log('[Cadence] Reading as plain XML file...');
+    const xmlText = await file.text();
+    // 6. XML size check
+    console.log('[Cadence] XML size:', xmlText ? xmlText.length : 0, 'chars — passes 500-char check:', !!(xmlText && xmlText.length >= 500));
+    if (!xmlText || xmlText.length < 500)
+      throw new Error('The file appears to be empty or corrupted.');
+
+    for (const tag of _iterElems(xmlText, 'Record')) {
+      const type = _getAttr(tag, 'type');
+      if (!RECORD_WHITELIST.has(type)) continue;
+      _onRecord(tag, type);
+    }
+    for (const tag of _iterElems(xmlText, 'Workout')) {
+      _onWorkout(tag);
+    }
   }
 
   // ── Group sleep segments into nights ────────────────────────────────
