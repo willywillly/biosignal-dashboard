@@ -1970,7 +1970,12 @@ async function parseAppleHealthFile(file) {
       const inf = new fflate.Inflate();
       inf.ondata = (chunk, final) => {
         try {
-          _processChunk(decoder.decode(chunk, { stream: !final }));
+          console.log('[Cadence] Decompressed bytes:', chunk.byteLength);
+          const xmlStr = decoder.decode(chunk, { stream: !final });
+          console.log('[Cadence] XML string length:', xmlStr.length);
+          console.log('[Cadence] XML string preview:', xmlStr.slice(0, 500));
+          console.log('[Cadence] Scanner entering chunk scan — searching for:', SLEEP_TYPE);
+          _processChunk(xmlStr);
           if (final) resolve();
         } catch (e) { reject(e); }
       };
@@ -1989,6 +1994,9 @@ async function parseAppleHealthFile(file) {
     if (!xmlText || xmlText.length < 500)
       throw new Error('The file appears to be empty or corrupted.');
 
+    console.log('[Cadence] XML string length:', xmlText.length);
+    console.log('[Cadence] XML string preview:', xmlText.slice(0, 500));
+    console.log('[Cadence] Scanner entering loop — searching for:', SLEEP_TYPE);
     for (const tag of _iterElems(xmlText, 'Record')) {
       const type = _getAttr(tag, 'type');
       if (!RECORD_WHITELIST.has(type)) continue;
