@@ -1959,32 +1959,22 @@ async function parseAppleHealthFile(file) {
       carry = tail.length > CARRY_MAX ? tail.slice(-CARRY_MAX) : tail;
     }
 
-    // Stream compressed bytes through fflate inflate (raw deflate = ZIP method 8).
-    // Prefer AsyncInflate (worker-based, non-blocking UI); fall back to sync Inflate.
-    const decoder  = new TextDecoder('utf-8');
-    const useAsync = typeof fflate.AsyncInflate === 'function';
+    // Stream compressed bytes through fflate sync Inflate (raw deflate = ZIP method 8).
+    const decoder = new TextDecoder('utf-8');
     await new Promise((resolve, reject) => {
       if (entry.method === 0) {
-        // Method 0 = stored (no compression)
         try { _processChunk(decoder.decode(compressed)); resolve(); }
         catch (e) { reject(e); }
         return;
       }
-      // Method 8 = deflate
-      const inf = useAsync ? new fflate.AsyncInflate() : new fflate.Inflate();
-      if (useAsync) {
-        inf.ondata = (err, chunk) => {
-          if (err) { reject(err); return; }
-          try { _processChunk(decoder.decode(chunk, { stream: true })); }
-          catch (e) { reject(e); }
-        };
-      } else {
-        inf.ondata = (chunk, final) => {
-          try { _processChunk(decoder.decode(chunk, { stream: !final })); if (final) resolve(); }
-          catch (e) { reject(e); }
-        };
-      }
-      try { inf.push(compressed, true); resolve(); }
+      const inf = new fflate.Inflate();
+      inf.ondata = (chunk, final) => {
+        try {
+          _processChunk(decoder.decode(chunk, { stream: !final }));
+          if (final) resolve();
+        } catch (e) { reject(e); }
+      };
+      try { inf.push(compressed, true); }
       catch (e) { reject(e); }
     });
 
