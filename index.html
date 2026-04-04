@@ -1970,10 +1970,15 @@ async function parseAppleHealthFile(file) {
       if (entry.method === 0) {
         xmlText = decoder.decode(compressed);
       } else {
-        // fflate.inflateSync: raw deflate → Uint8Array, then decode to string
-        const decompressed = fflate.inflateSync(compressed);
-        console.log('[Cadence] Decompressed bytes:', decompressed.byteLength, '(', (decompressed.byteLength/1024/1024).toFixed(1), 'MB)');
-        xmlText = decoder.decode(decompressed);
+        // fflate.inflate: async callback form — non-blocking, resolves full output in one shot
+        xmlText = await new Promise((resolve, reject) => {
+          fflate.inflate(compressed, (err, decompressed) => {
+            if (err) { reject(new Error('Decompression failed: ' + err.message)); return; }
+            console.log('[Cadence] Decompressed bytes:', decompressed.byteLength,
+              '(', (decompressed.byteLength/1024/1024).toFixed(1), 'MB)');
+            resolve(decoder.decode(decompressed));
+          });
+        });
       }
     } catch (e) {
       throw new Error('Failed to decompress export.xml: ' + (e.message || e));
