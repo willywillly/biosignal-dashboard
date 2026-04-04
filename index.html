@@ -1959,37 +1959,36 @@ async function parseAppleHealthFile(file) {
       carry = tail.length > CARRY_MAX ? tail.slice(-CARRY_MAX) : tail;
     }
 
-    // Decompress the raw deflate (ZIP method 8) or stored (method 0) entry.
-    // One-shot inflate avoids the ondata-streaming race where resolve() fires
-    // before all chunks reach _processChunk — critical because all 1400+ sleep
-    // records appear in the last 1.6% of the 748 MB decompressed XML.
-    console.log('[Cadence] Decompressing entry — method:', entry.method, 'compressedSize:', (entry.compressedSize/1024/1024).toFixed(1), 'MB');
-    if (entry.method === 0) {
-      const decoder = new TextDecoder('utf-8');
-      _processChunk(decoder.decode(compressed));
-    } else {
-      await new Promise((resolve, reject) => {
-        const decoder = new TextDecoder('utf-8');
-        const inf = new fflate.Inflate();
+    // Stream compressed bytes through fflate inflate (raw deflate = ZIP method 8).
+    // Prefer AsyncInflate (worker-based, non-blocking UI); fall back to sync Inflate.
+    const decoder  = new TextDecoder('utf-8');
+    const useAsync = typeof fflate.AsyncInflate === 'function';
+    await new Promise((resolve, reject) => {
+      if (entry.method === 0) {
+        // Method 0 = stored (no compression)
+        try { _processChunk(decoder.decode(compressed)); resolve(); }
+        catch (e) { reject(e); }
+        return;
+      }
+      // Method 8 = deflate
+      const inf = useAsync ? new fflate.AsyncInflate() : new fflate.Inflate();
+      if (useAsync) {
+        inf.ondata = (err, chunk) => {
+          if (err) { reject(err); return; }
+          try { _processChunk(decoder.decode(chunk, { stream: true })); }
+          catch (e) { reject(e); }
+        };
+      } else {
         inf.ondata = (chunk, final) => {
-          try {
-            _processChunk(decoder.decode(chunk, { stream: !final }));
-          } catch (e) {
-            reject(e);
-          }
+          try { _processChunk(decoder.decode(chunk, { stream: !final })); if (final) resolve(); }
+          catch (e) { reject(e); }
         };
-        inf.onend = () => {
-          console.log('[Cadence] Streaming decompression complete');
-          resolve();
-        };
-        inf.onerror = (e) => reject(e);
-        try {
-          inf.push(compressed, true);
-        } catch (e) {
-          reject(new Error('Failed to decompress export.xml: ' + (e.message || e)));
-        }
-      });
-    }
+      }
+      try { inf.push(compressed, true); resolve(); }
+      catch (e) { reject(e); }
+    });
+
+    console.log('[Cadence] Streaming decompression complete — compressedSize:', (entry.compressedSize/1024/1024).toFixed(1), 'MB');
 
   } else {
     // ── Path B: Plain XML → batch parse (small files, unchanged) ────────
@@ -2000,9 +1999,6 @@ async function parseAppleHealthFile(file) {
     if (!xmlText || xmlText.length < 500)
       throw new Error('The file appears to be empty or corrupted.');
 
-    console.log('[Cadence] XML string length:', xmlText.length);
-    console.log('[Cadence] XML string preview:', xmlText.slice(0, 500));
-    console.log('[Cadence] Scanner entering loop — searching for:', SLEEP_TYPE);
     for (const tag of _iterElems(xmlText, 'Record')) {
       const type = _getAttr(tag, 'type');
       if (!RECORD_WHITELIST.has(type)) continue;
