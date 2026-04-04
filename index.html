@@ -1959,31 +1959,27 @@ async function parseAppleHealthFile(file) {
       carry = tail.length > CARRY_MAX ? tail.slice(-CARRY_MAX) : tail;
     }
 
-    // Stream compressed bytes through fflate sync Inflate (raw deflate = ZIP method 8).
+    // Decompress the raw deflate (ZIP method 8) or stored (method 0) entry.
+    // One-shot inflate avoids the ondata-streaming race where resolve() fires
+    // before all chunks reach _processChunk — critical because all 1400+ sleep
+    // records appear in the last 1.6% of the 748 MB decompressed XML.
     const decoder = new TextDecoder('utf-8');
-    await new Promise((resolve, reject) => {
+    console.log('[Cadence] Decompressing entry — method:', entry.method, 'compressedSize:', (entry.compressedSize/1024/1024).toFixed(1), 'MB');
+    let xmlText;
+    try {
       if (entry.method === 0) {
-        try { _processChunk(decoder.decode(compressed)); resolve(); }
-        catch (e) { reject(e); }
-        return;
+        xmlText = decoder.decode(compressed);
+      } else {
+        // fflate.inflateSync: raw deflate → Uint8Array, then decode to string
+        const decompressed = fflate.inflateSync(compressed);
+        console.log('[Cadence] Decompressed bytes:', decompressed.byteLength, '(', (decompressed.byteLength/1024/1024).toFixed(1), 'MB)');
+        xmlText = decoder.decode(decompressed);
       }
-      const inf = new fflate.Inflate();
-      inf.ondata = (chunk, final) => {
-        try {
-          console.log('[Cadence] Decompressed bytes:', chunk.byteLength);
-          const xmlStr = decoder.decode(chunk, { stream: !final });
-          console.log('[Cadence] XML string length:', xmlStr.length);
-          console.log('[Cadence] XML string preview:', xmlStr.slice(0, 500));
-          console.log('[Cadence] Scanner entering chunk scan — searching for:', SLEEP_TYPE);
-          _processChunk(xmlStr);
-          if (final) resolve();
-        } catch (e) { reject(e); }
-      };
-      try { inf.push(compressed, true); }
-      catch (e) { reject(e); }
-    });
-
-    console.log('[Cadence] Streaming decompression complete — compressedSize:', (entry.compressedSize/1024/1024).toFixed(1), 'MB');
+    } catch (e) {
+      throw new Error('Failed to decompress export.xml: ' + (e.message || e));
+    }
+    console.log('[Cadence] XML string length:', xmlText.length, '— scanning for records…');
+    _processChunk(xmlText);
 
   } else {
     // ── Path B: Plain XML → batch parse (small files, unchanged) ────────
