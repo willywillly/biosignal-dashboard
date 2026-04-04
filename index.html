@@ -629,27 +629,11 @@
       <div class="land-line" id="land-line-2">Now you can see it.</div>
     </div>
     <p class="land-privacy" id="land-privacy">Private by design. Your data never leaves your device.</p>
+    <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px;text-align:center;">Open the Health app → tap your profile photo → scroll all the way down → tap Export All Health Data → save the zip to your phone</p>
     <input type="file" id="file-input" accept=".zip,.xml" hidden>
     <button class="land-btn" id="land-btn" onclick="$('file-input').click()">
-      Export your Apple Health data
+      Import your Apple Health data
     </button>
-    <div class="land-howto" id="land-howto">
-      <button class="land-howto-toggle" onclick="toggleLandHowTo()">
-        How to export your file
-        <svg id="land-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-      <div class="land-howto-body" id="land-howto-body">
-        <ol>
-          <li>Open the <strong>Health</strong> app on your iPhone</li>
-          <li>Tap your profile picture (top right)</li>
-          <li>Scroll down → <strong>Export All Health Data</strong></li>
-          <li>Share or AirDrop the .zip file to your Mac</li>
-          <li>Click the button above</li>
-        </ol>
-      </div>
-    </div>
     <div class="land-error" id="land-error"></div>
   </div>
 </div>
@@ -1348,7 +1332,6 @@ async function playLandingAnimation() {
   $('land-btn').style.opacity = '1';
   await delay(TIMING.afterButton);
 
-  $('land-howto').style.opacity = '1';
 }
 
 // ── Landing how-to toggle ─────────────────────────────────────────────────
@@ -1358,13 +1341,11 @@ function toggleLandHowTo() {
   const body    = $('land-howto-body');
   const chevron = $('land-chevron');
   if (_howToOpen) {
-    body.style.maxHeight = body.scrollHeight + 'px';
-    body.classList.add('open');
-    chevron.style.transform = 'rotate(180deg)';
+    if (body) { body.style.maxHeight = body.scrollHeight + 'px'; body.classList.add('open'); }
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
   } else {
-    body.style.maxHeight = '0';
-    body.classList.remove('open');
-    chevron.style.transform = '';
+    if (body) { body.style.maxHeight = '0'; body.classList.remove('open'); }
+    if (chevron) chevron.style.transform = '';
   }
 }
 
@@ -2577,7 +2558,17 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
 
   // ── Sleep history ──
   $('b-sleep').textContent=`${meta.totalNights} nights`;
-  timeLine('chart-sleep',nights.map(n=>({x:n.wakeDate,y:+n.sleepHrs.toFixed(2)})),'#8CC63F','hrs');
+  (function() {
+    const n = nights.length;
+    const chartWrap = $('chart-sleep') ? $('chart-sleep').parentElement : null;
+    if (n === 0) {
+      if (chartWrap) chartWrap.innerHTML = '<div style="background:var(--surface);border-radius:12px;padding:20px 16px;color:var(--muted);font-size:13px;line-height:1.6;">No sleep data found in your export. If you have an Apple Watch, go to Settings → Health → Sleep and turn on Track Sleep with Apple Watch. Re-export in about a week and your patterns will show up here.</div>';
+    } else if (n < 7) {
+      if (chartWrap) chartWrap.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px 16px;color:var(--muted);font-size:13px;line-height:1.6;">Only ${n} night${n === 1 ? '' : 's'} of sleep data found — Cadence needs at least a week to find your patterns. Keep wearing your watch to bed and re-export when you have more data.</div>`;
+    } else {
+      timeLine('chart-sleep',nights.map(n=>({x:n.wakeDate,y:+n.sleepHrs.toFixed(2)})),'#8CC63F','hrs');
+    }
+  })();
 
   // ── Resting HR — use morning-after-wake readings attached to each night ──
   // (avoids mixing in active/workout HR which averages ~127 bpm and spikes to 200)
@@ -3011,7 +3002,6 @@ function boot() {
     $('land-line-2').style.opacity = '1';
     $('land-privacy').style.opacity = '1';
     $('land-btn').style.opacity    = '1';
-    $('land-howto').style.opacity  = '1';
     if (!checkedInToday()) showModal('modal-checkin');
 
   } else {
