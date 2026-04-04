@@ -1963,28 +1963,32 @@ async function parseAppleHealthFile(file) {
     // One-shot inflate avoids the ondata-streaming race where resolve() fires
     // before all chunks reach _processChunk — critical because all 1400+ sleep
     // records appear in the last 1.6% of the 748 MB decompressed XML.
-    const decoder = new TextDecoder('utf-8');
     console.log('[Cadence] Decompressing entry — method:', entry.method, 'compressedSize:', (entry.compressedSize/1024/1024).toFixed(1), 'MB');
-    let xmlText;
-    try {
-      if (entry.method === 0) {
-        xmlText = decoder.decode(compressed);
-      } else {
-        // fflate.inflate: async callback form — non-blocking, resolves full output in one shot
-        xmlText = await new Promise((resolve, reject) => {
-          fflate.inflate(compressed, (err, decompressed) => {
-            if (err) { reject(new Error('Decompression failed: ' + err.message)); return; }
-            console.log('[Cadence] Decompressed bytes:', decompressed.byteLength,
-              '(', (decompressed.byteLength/1024/1024).toFixed(1), 'MB)');
-            resolve(decoder.decode(decompressed));
-          });
-        });
-      }
-    } catch (e) {
-      throw new Error('Failed to decompress export.xml: ' + (e.message || e));
+    if (entry.method === 0) {
+      const decoder = new TextDecoder('utf-8');
+      _processChunk(decoder.decode(compressed));
+    } else {
+      await new Promise((resolve, reject) => {
+        const decoder = new TextDecoder('utf-8');
+        const inf = new fflate.Inflate();
+        inf.ondata = (chunk, final) => {
+          try {
+            _processChunk(decoder.decode(chunk, { stream: !final }));
+            if (final) {
+              console.log('[Cadence] Streaming decompression complete');
+              resolve();
+            }
+          } catch (e) {
+            reject(e);
+          }
+        };
+        try {
+          inf.push(compressed, true);
+        } catch (e) {
+          reject(new Error('Failed to decompress export.xml: ' + (e.message || e)));
+        }
+      });
     }
-    console.log('[Cadence] XML string length:', xmlText.length, '— scanning for records…');
-    _processChunk(xmlText);
 
   } else {
     // ── Path B: Plain XML → batch parse (small files, unchanged) ────────
