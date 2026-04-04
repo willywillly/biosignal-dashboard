@@ -1974,14 +1974,15 @@ async function parseAppleHealthFile(file) {
         inf.ondata = (chunk, final) => {
           try {
             _processChunk(decoder.decode(chunk, { stream: !final }));
-            if (final) {
-              console.log('[Cadence] Streaming decompression complete');
-              resolve();
-            }
           } catch (e) {
             reject(e);
           }
         };
+        inf.onend = () => {
+          console.log('[Cadence] Streaming decompression complete');
+          resolve();
+        };
+        inf.onerror = (e) => reject(e);
         try {
           inf.push(compressed, true);
         } catch (e) {
