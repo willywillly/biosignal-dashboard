@@ -316,6 +316,10 @@
 
   /* Footer */
   .dash-footer { padding: 40px 20px; text-align: center; font-size: 11px; color: var(--muted); font-weight: 400; }
+  .nights-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; }
+  .nights-bar-fill { height: 100%; background: var(--lime); border-radius: 2px; }
+  .dash-footer-privacy { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  #nights-progress { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 
   /* Card headers (shared) */
   .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
@@ -963,7 +967,10 @@
 
 </div><!-- /acc-sections -->
 
-<div class="dash-footer">Your data never leaves this device.</div>
+<div class="dash-footer">
+  <div id="nights-progress"></div>
+  <div class="dash-footer-privacy">Your data never leaves this device.</div>
+</div>
 
 </div><!-- /screen-dash -->
 
@@ -1572,6 +1579,20 @@ function _computeHrvTrend(hrvRaw) {
   return 'stable';
 }
 
+function _pearson(a, b) {
+  const n = Math.min(a.length, b.length);
+  if (n < 10) return null;
+  const meanA = a.slice(0,n).reduce((s,v)=>s+v,0)/n;
+  const meanB = b.slice(0,n).reduce((s,v)=>s+v,0)/n;
+  let num=0, dA=0, dB=0;
+  for (let i=0;i<n;i++){
+    const da=a[i]-meanA, db=b[i]-meanB;
+    num+=da*db; dA+=da*da; dB+=db*db;
+  }
+  if (dA===0||dB===0) return null;
+  return parseFloat((num/Math.sqrt(dA*dB)).toFixed(2));
+}
+
 function _computeMeta(nights, hrReadings, workoutRaw, extra) {
   const onsetNorms = nights.map(n => n.onsetNorm);
   const wakeHours  = nights.map(n => n.wakeHour);
@@ -1664,6 +1685,25 @@ function _computeMeta(nights, hrReadings, workoutRaw, extra) {
   const hrv_trend = _computeHrvTrend(hrvRaw);
   const has_hrv   = hrvRaw.length >= 7;
 
+  const hrvByNight      = [];
+  const sleepByNight    = [];
+  const varianceByNight = [];
+
+  for (const night of nights) {
+    const d = night.wakeDate;
+    if (!d) continue;
+    const dayHrv = hrvRaw.filter(r => r.startDate.slice(0, 10) === d);
+    if (dayHrv.length === 0) continue;
+    const nightAvgHrv = dayHrv.reduce((s,r)=>s+r.value,0)/dayHrv.length;
+    hrvByNight.push(nightAvgHrv);
+    sleepByNight.push(night.sleepHrs);
+    varianceByNight.push(Math.abs(night.deviationMin));
+  }
+
+  const corr_hrv_sleep    = _pearson(hrvByNight, sleepByNight);
+  const corr_hrv_variance = _pearson(hrvByNight, varianceByNight.map(v => -v));
+  const hrvPairedNights   = hrvByNight.length;
+
   const nightsWithRhrArr = nights.filter(n => n.rhr !== null);
   let rhrTrend = null;
   if (nightsWithRhrArr.length >= 6) {
@@ -1721,6 +1761,9 @@ function _computeMeta(nights, hrReadings, workoutRaw, extra) {
     has_hrv,
     rhrTrend,
     dataProfile,
+    corr_hrv_sleep,
+    corr_hrv_variance,
+    hrvPairedNights,
   };
 }
 
@@ -2611,6 +2654,22 @@ function renderDashboard({ meta, nights, rhrRaw, workoutRaw }) {
   // Railway backend, which runs the readiness algorithm and returns an insight.
   // Raw health data never leaves the browser — only aggregates go to the server.
   fetchCadenceInsight(meta, score);
+
+  updateNightsProgress(meta.totalNights);
+}
+
+function updateNightsProgress(nights) {
+  const el = document.getElementById('nights-progress');
+  if (!el) return;
+  if (nights < 7) {
+    el.innerHTML = `<span>${nights} nights tracked — keep wearing your watch to unlock your readiness score</span>`;
+  } else if (nights < 20) {
+    el.innerHTML = `<span>${nights} / 20 nights — <strong>${20 - nights} more</strong> to unlock personalized recovery patterns</span><div class='nights-bar'><div class='nights-bar-fill' style='width:${(nights/20)*100}%'></div></div>`;
+  } else if (nights < 30) {
+    el.innerHTML = `<span>${nights} / 30 nights — <strong>${30 - nights} more</strong> to unlock correlation insights</span><div class='nights-bar'><div class='nights-bar-fill' style='width:${(nights/30)*100}%'></div></div>`;
+  } else {
+    el.innerHTML = `<span>Your insights are fully personalized to your data.</span>`;
+  }
 }
 
 // ──── SUB: API Config ────
@@ -2750,7 +2809,11 @@ function skipCheckin() {
 // After each dashboard render, saves a one-line summary to a rolling log.
 // The last 30 entries are sent to the backend as context_block on every call.
 function saveSessionSummary(score, meta) {
-  const line = `${today()}: cadence_score=${score}, bedtime=${fmtHour(meta.medianOnset%24)}, sleep=${meta.avgSleepHrs.toFixed(1)}h, variance=${Math.round(meta.onsetSdMin)}min, jetlag=${Math.round(meta.jetlagMin||0)}min`;
+  let line = `${today()}: score=${score}, bedtime=${fmtHour(meta.medianOnset%24)}, sleep=${meta.avgSleepHrs.toFixed(1)}h, variance=${Math.round(meta.onsetSdMin)}min, jetlag=${Math.round(meta.jetlagMin||0)}min, nights=${meta.totalNights}`;
+  if (meta.avgHRV)                                        line += `, avg_hrv=${meta.avgHRV}ms`;
+  if (meta.hrv_trend)                                     line += `, hrv_trend=${meta.hrv_trend}`;
+  if (meta.corr_hrv_sleep    != null)                     line += `, corr_hrv_sleep=${meta.corr_hrv_sleep}`;
+  if (meta.corr_hrv_variance != null)                     line += `, corr_hrv_variance=${meta.corr_hrv_variance}`;
   appendContext(line);
 }
 
@@ -2816,6 +2879,12 @@ async function fetchCadenceInsight(meta, score) {
     context_block:            buildContextBlock() || undefined,
     user_name:                localStorage.getItem(KEY_NAME) || undefined,
     data_profile:             meta.dataProfile || undefined,
+    avg_hrv:           meta.avgHRV                || undefined,
+    hrv_trend:         meta.hrv_trend             || undefined,
+    delta_rhr:         meta.deltaRhr              || undefined,
+    corr_hrv_sleep:    meta.corr_hrv_sleep        ?? undefined,
+    corr_hrv_variance: meta.corr_hrv_variance     ?? undefined,
+    hrv_paired_nights: meta.hrvPairedNights       || undefined,
   };
 
   const headers = {
