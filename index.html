@@ -1827,7 +1827,7 @@ async function parseAppleHealthFile(file) {
         unzip.register(fflate.AsyncUnzipInflate);
 
         unzip.onfile = (entry) => {
-          if (!/export\.xml$/i.test(entry.name)) { entry.start(); return; }
+          if (!/export\.xml$/i.test(entry.name)) { return; }
           found = true;
 
           entry.ondata = (err, chunk, final) => {
