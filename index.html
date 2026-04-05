@@ -1793,38 +1793,134 @@ async function parseAppleHealthFile(file) {
   // ── Read XML text ───────────────────────────────────────────────────
   // 2. Extension check
   console.log('[Cadence] Extension check — .zip:', file.name.toLowerCase().endsWith('.zip'), '| .xml:', file.name.toLowerCase().endsWith('.xml'));
+
+  // Hoist type constants and result arrays so the streaming path can populate
+  // them directly and the Extract records section can reuse them unchanged.
+  const SLEEP_TYPE = 'HKCategoryTypeIdentifierSleepAnalysis';
+  const HR_TYPE    = 'HKQuantityTypeIdentifierHeartRate';
+  const RHR_TYPE   = 'HKQuantityTypeIdentifierRestingHeartRate';
+  const HRV_TYPE   = 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN';
+  const RECORD_WHITELIST = new Set([SLEEP_TYPE, HR_TYPE, RHR_TYPE, HRV_TYPE]);
+
+  let usedStreamingPath = false;
+  let sleepSegs  = [];
+  let hrReadings = [];
+  let hrvRaw     = [];
+  let inBedSegs  = [];
+  let workoutRaw = [];
+
   let xmlText;
   if (file.name.toLowerCase().endsWith('.zip')) {
     if (file.size > 30 * 1024 * 1024) {
-      // ── Large file path: fflate streaming decompression ──────────────
-      console.log('[Cadence] Large file path taken — size:', (file.size/1024/1024).toFixed(1)+'MB');
+      // ── Large file path: fflate true streaming parse ──────────────────
+      console.log('[Cadence] Streaming parse started');
       if (!window.fflate) throw new Error('fflate decompression library failed to load. Try refreshing the page.');
       const ab = await file.arrayBuffer();
-      xmlText = await new Promise((resolve, reject) => {
+      const uint8 = new Uint8Array(ab);
+      const streamResult = await new Promise((resolve, reject) => {
+        const sleepSegs = [], hrReadings = [], hrvRaw = [], inBedSegs = [], workoutRaw = [];
+        let tail = '';
+        let found = false;
+        const decoder = new TextDecoder('utf-8');
+
         const unzip = new fflate.Unzip();
         unzip.register(fflate.AsyncUnzipInflate);
-        let found = false;
-        unzip.onfile = (f) => {
-          if (!f.name.match(/export\.xml$/i)) return;
+
+        unzip.onfile = (entry) => {
+          if (!/export\.xml$/i.test(entry.name)) { entry.start(); return; }
           found = true;
-          const chunks = [];
-          f.ondata = (err, data, final) => {
+
+          entry.ondata = (err, chunk, final) => {
             if (err) { reject(err); return; }
-            chunks.push(data);
+
+            const text = tail + decoder.decode(chunk, { stream: !final });
+            const lastClose = text.lastIndexOf('/>');
+            const safeText = lastClose !== -1 ? text.slice(0, lastClose + 2) : '';
+            tail = lastClose !== -1 ? text.slice(lastClose + 2) : text;
+
+            // Records
+            const open_r = '<Record ';
+            let pos_r = 0;
+            while (true) {
+              const s = safeText.indexOf(open_r, pos_r);
+              if (s === -1) break;
+              const e = safeText.indexOf('/>', s);
+              if (e === -1) break;
+              const tag = safeText.slice(s, e + 2);
+              pos_r = e + 2;
+              const type = _getAttr(tag, 'type');
+              if (!RECORD_WHITELIST.has(type)) continue;
+              if (type === SLEEP_TYPE) {
+                const val = _getAttr(tag, 'value') || '';
+                const start = _parseAHDate(_getAttr(tag, 'startDate'));
+                const end   = _parseAHDate(_getAttr(tag, 'endDate'));
+                if (!start || !end || end <= start) continue;
+                if (val.includes('Asleep') && !val.includes('Awake')) {
+                  sleepSegs.push({ start, end });
+                } else if (val.includes('InBed')) {
+                  inBedSegs.push({ start, end });
+                }
+              } else if (type === HR_TYPE) {
+                const val = parseFloat(_getAttr(tag, 'value'));
+                const ts  = _parseAHDate(_getAttr(tag, 'startDate'));
+                if (ts && !isNaN(val) && val > 20 && val < 250) {
+                  hrReadings.push({
+                    startDate:  _getAttr(tag, 'startDate'),
+                    endDate:    _getAttr(tag, 'endDate'),
+                    value:      String(Math.round(val)),
+                    unit:       _getAttr(tag, 'unit') || 'count/min',
+                    sourceName: _getAttr(tag, 'sourceName'),
+                    _ts:        ts.getTime(),
+                  });
+                }
+              } else if (type === HRV_TYPE) {
+                const val   = parseFloat(_getAttr(tag, 'value'));
+                const start = _getAttr(tag, 'startDate');
+                if (!isNaN(val) && val >= 0 && start) {
+                  hrvRaw.push({ startDate: start, value: val });
+                }
+              }
+            }
+
+            // Workouts
+            const open_w = '<Workout ';
+            let pos_w = 0;
+            while (true) {
+              const s = safeText.indexOf(open_w, pos_w);
+              if (s === -1) break;
+              const e = safeText.indexOf('/>', s);
+              if (e === -1) break;
+              const tag = safeText.slice(s, e + 2);
+              pos_w = e + 2;
+              workoutRaw.push({
+                startDate:             _getAttr(tag, 'startDate'),
+                endDate:               _getAttr(tag, 'endDate'),
+                workoutActivityType:   _getAttr(tag, 'workoutActivityType'),
+                duration:              _getAttr(tag, 'duration'),
+                durationUnit:          _getAttr(tag, 'durationUnit') || 'min',
+                totalEnergyBurned:     _getAttr(tag, 'totalEnergyBurned'),
+                totalEnergyBurnedUnit: _getAttr(tag, 'totalEnergyBurnedUnit'),
+                totalDistance:         _getAttr(tag, 'totalDistance'),
+                totalDistanceUnit:     _getAttr(tag, 'totalDistanceUnit'),
+                sourceName:            _getAttr(tag, 'sourceName'),
+              });
+            }
+
             if (final) {
-              const total = chunks.reduce((n, c) => n + c.length, 0);
-              const merged = new Uint8Array(total);
-              let offset = 0;
-              for (const c of chunks) { merged.set(c, offset); offset += c.length; }
-              resolve(new TextDecoder().decode(merged));
+              resolve({ sleepSegs, hrReadings, hrvRaw, inBedSegs, workoutRaw });
             }
           };
-          f.start();
+
+          entry.start();
         };
-        unzip.push(new Uint8Array(ab), true);
-        // Deferred check: if no matching file was encountered, reject
-        setTimeout(() => { if (!found) reject(new Error('No export.xml found inside the zip. Make sure you exported "All Health Data" from the iPhone Health app.')); }, 0);
+
+        unzip.push(uint8, true);
+        setTimeout(() => { if (!found) reject(new Error('No export.xml found in ZIP')); }, 500);
       });
+
+      ({ sleepSegs, hrReadings, hrvRaw, inBedSegs, workoutRaw } = streamResult);
+      usedStreamingPath = true;
+      console.log('[Cadence] Streaming parse complete — sleep:', sleepSegs.length, 'hr:', hrReadings.length, 'hrv:', hrvRaw.length);
     } else {
       // ── Small file path: JSZip (unchanged) ───────────────────────────
       // 3a. JSZip available?
@@ -1852,80 +1948,73 @@ async function parseAppleHealthFile(file) {
     xmlText = await file.text();
   }
 
-  // 6. XML size check
-  console.log('[Cadence] XML size:', xmlText ? xmlText.length : 0, 'chars — passes 500-char check:', !!(xmlText && xmlText.length >= 500));
-  if (!xmlText || xmlText.length < 500)
-    throw new Error('The file appears to be empty or corrupted.');
+  // 6. XML size check (skip for streaming path — no xmlText was built)
+  if (!usedStreamingPath) {
+    console.log('[Cadence] XML size:', xmlText ? xmlText.length : 0, 'chars — passes 500-char check:', !!(xmlText && xmlText.length >= 500));
+    if (!xmlText || xmlText.length < 500)
+      throw new Error('The file appears to be empty or corrupted.');
+  }
 
   // ── Extract records ─────────────────────────────────────────────────
-  const SLEEP_TYPE = 'HKCategoryTypeIdentifierSleepAnalysis';
-  const HR_TYPE    = 'HKQuantityTypeIdentifierHeartRate';
-  const RHR_TYPE   = 'HKQuantityTypeIdentifierRestingHeartRate';
-  const HRV_TYPE   = 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN';
-
+  // Type constants and result arrays are declared above (hoisted) so both
+  // the streaming path and this fallback path share the same variables.
   // Whitelist: only parse these 5 record types. Apple Health exports contain
   // 50+ record types (StepCount, WalkingSpeed, FlightsClimbed, VO2Max, …) that
   // we do not use. On a 750 MB export the skipped types account for ~90 % of
   // all <Record> elements. Checking the type attr first and jumping to the next
   // element keeps the hot loop cheap and drops parse time from 30 s+ to <5 s.
-  const RECORD_WHITELIST = new Set([SLEEP_TYPE, HR_TYPE, RHR_TYPE, HRV_TYPE]);
 
-  const sleepSegs  = [];
-  const hrReadings = [];
-  const hrvRaw     = [];
-
-  const inBedSegs = []; // fallback for iPhone-only users with no Asleep stages
-
-  for (const tag of _iterElems(xmlText, 'Record')) {
-    const type = _getAttr(tag, 'type');
-    if (!RECORD_WHITELIST.has(type)) continue; // skip non-whitelisted types immediately
-    if (type === SLEEP_TYPE) {
-      const val = _getAttr(tag, 'value') || '';
-      const start = _parseAHDate(_getAttr(tag, 'startDate'));
-      const end   = _parseAHDate(_getAttr(tag, 'endDate'));
-      if (!start || !end || end <= start) continue;
-      // Prefer explicit asleep stages (Apple Watch, WHOOP, etc.)
-      if (val.includes('Asleep') && !val.includes('Awake')) {
-        sleepSegs.push({ start, end });
-      } else if (val.includes('InBed')) {
-        inBedSegs.push({ start, end });
-      }
-    } else if (type === HR_TYPE) {
-      const val = parseFloat(_getAttr(tag, 'value'));
-      const ts  = _parseAHDate(_getAttr(tag, 'startDate'));
-      if (ts && !isNaN(val) && val > 20 && val < 250) {
-        hrReadings.push({
-          startDate:  _getAttr(tag, 'startDate'),
-          endDate:    _getAttr(tag, 'endDate'),
-          value:      String(Math.round(val)),
-          unit:       _getAttr(tag, 'unit') || 'count/min',
-          sourceName: _getAttr(tag, 'sourceName'),
-          _ts:        ts.getTime(),
-        });
-      }
-    } else if (type === HRV_TYPE) {
-      const val   = parseFloat(_getAttr(tag, 'value'));
-      const start = _getAttr(tag, 'startDate');
-      if (!isNaN(val) && val >= 0 && start) {
-        hrvRaw.push({ startDate: start, value: val });
+  if (!usedStreamingPath) {
+    for (const tag of _iterElems(xmlText, 'Record')) {
+      const type = _getAttr(tag, 'type');
+      if (!RECORD_WHITELIST.has(type)) continue; // skip non-whitelisted types immediately
+      if (type === SLEEP_TYPE) {
+        const val = _getAttr(tag, 'value') || '';
+        const start = _parseAHDate(_getAttr(tag, 'startDate'));
+        const end   = _parseAHDate(_getAttr(tag, 'endDate'));
+        if (!start || !end || end <= start) continue;
+        // Prefer explicit asleep stages (Apple Watch, WHOOP, etc.)
+        if (val.includes('Asleep') && !val.includes('Awake')) {
+          sleepSegs.push({ start, end });
+        } else if (val.includes('InBed')) {
+          inBedSegs.push({ start, end });
+        }
+      } else if (type === HR_TYPE) {
+        const val = parseFloat(_getAttr(tag, 'value'));
+        const ts  = _parseAHDate(_getAttr(tag, 'startDate'));
+        if (ts && !isNaN(val) && val > 20 && val < 250) {
+          hrReadings.push({
+            startDate:  _getAttr(tag, 'startDate'),
+            endDate:    _getAttr(tag, 'endDate'),
+            value:      String(Math.round(val)),
+            unit:       _getAttr(tag, 'unit') || 'count/min',
+            sourceName: _getAttr(tag, 'sourceName'),
+            _ts:        ts.getTime(),
+          });
+        }
+      } else if (type === HRV_TYPE) {
+        const val   = parseFloat(_getAttr(tag, 'value'));
+        const start = _getAttr(tag, 'startDate');
+        if (!isNaN(val) && val >= 0 && start) {
+          hrvRaw.push({ startDate: start, value: val });
+        }
       }
     }
-  }
 
-  const workoutRaw = [];
-  for (const tag of _iterElems(xmlText, 'Workout')) {
-    workoutRaw.push({
-      startDate:             _getAttr(tag, 'startDate'),
-      endDate:               _getAttr(tag, 'endDate'),
-      workoutActivityType:   _getAttr(tag, 'workoutActivityType'),
-      duration:              _getAttr(tag, 'duration'),
-      durationUnit:          _getAttr(tag, 'durationUnit') || 'min',
-      totalEnergyBurned:     _getAttr(tag, 'totalEnergyBurned'),
-      totalEnergyBurnedUnit: _getAttr(tag, 'totalEnergyBurnedUnit'),
-      totalDistance:         _getAttr(tag, 'totalDistance'),
-      totalDistanceUnit:     _getAttr(tag, 'totalDistanceUnit'),
-      sourceName:            _getAttr(tag, 'sourceName'),
-    });
+    for (const tag of _iterElems(xmlText, 'Workout')) {
+      workoutRaw.push({
+        startDate:             _getAttr(tag, 'startDate'),
+        endDate:               _getAttr(tag, 'endDate'),
+        workoutActivityType:   _getAttr(tag, 'workoutActivityType'),
+        duration:              _getAttr(tag, 'duration'),
+        durationUnit:          _getAttr(tag, 'durationUnit') || 'min',
+        totalEnergyBurned:     _getAttr(tag, 'totalEnergyBurned'),
+        totalEnergyBurnedUnit: _getAttr(tag, 'totalEnergyBurnedUnit'),
+        totalDistance:         _getAttr(tag, 'totalDistance'),
+        totalDistanceUnit:     _getAttr(tag, 'totalDistanceUnit'),
+        sourceName:            _getAttr(tag, 'sourceName'),
+      });
+    }
   }
 
   // ── Group sleep segments into nights ────────────────────────────────
