@@ -1838,6 +1838,8 @@ async function parseAppleHealthFile(file) {
             const safeText = lastClose !== -1 ? text.slice(0, lastClose + 2) : '';
             tail = lastClose !== -1 ? text.slice(lastClose + 2) : text;
 
+            console.log('[Cadence] chunk raw length:', chunk.length, '| text length:', text.length, '| safeText length:', safeText.length, '| tail length:', tail.length, '| first 200 chars of safeText:', safeText.slice(0, 200));
+
             // Records
             const open_r = '<Record ';
             let pos_r = 0;
