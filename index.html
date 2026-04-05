@@ -1834,9 +1834,13 @@ async function parseAppleHealthFile(file) {
             if (err) { reject(err); return; }
 
             const text = tail + decoder.decode(chunk, { stream: !final });
-            const lastClose = text.lastIndexOf('/>');
-            const safeText = lastClose !== -1 ? text.slice(0, lastClose + 2) : '';
-            tail = lastClose !== -1 ? text.slice(lastClose + 2) : text;
+            const lastRecordClose  = text.lastIndexOf('</Record>');
+            const lastWorkoutClose = text.lastIndexOf('</Workout>');
+            let lastCloseEnd = -1;
+            if (lastRecordClose  !== -1) lastCloseEnd = Math.max(lastCloseEnd, lastRecordClose  + 9);
+            if (lastWorkoutClose !== -1) lastCloseEnd = Math.max(lastCloseEnd, lastWorkoutClose + 10);
+            const safeText = lastCloseEnd !== -1 ? text.slice(0, lastCloseEnd) : '';
+            tail = lastCloseEnd !== -1 ? text.slice(lastCloseEnd) : text;
 
             console.log('[Cadence] chunk raw length:', chunk.length, '| text length:', text.length, '| safeText length:', safeText.length, '| tail length:', tail.length, '| first 200 chars of safeText:', safeText.slice(0, 200));
 
@@ -1846,10 +1850,21 @@ async function parseAppleHealthFile(file) {
             while (true) {
               const s = safeText.indexOf(open_r, pos_r);
               if (s === -1) break;
-              const e = safeText.indexOf('/>', s);
-              if (e === -1) break;
-              const tag = safeText.slice(s, e + 2);
-              pos_r = e + 2;
+              const selfClose = safeText.indexOf('/>', s);
+              const tagClose  = safeText.indexOf('>', s);
+              if (tagClose === -1) break;
+              let tag;
+              if (selfClose !== -1 && selfClose < tagClose) {
+                // Self-closing: <Record ... />
+                tag = safeText.slice(s, selfClose + 2);
+                pos_r = selfClose + 2;
+              } else {
+                // Has children: <Record ...>...</Record>
+                const end = safeText.indexOf('</Record>', tagClose);
+                if (end === -1) break;
+                tag = safeText.slice(s, tagClose + 1);
+                pos_r = end + 9;
+              }
               const type = _getAttr(tag, 'type');
               if (!RECORD_WHITELIST.has(type)) continue;
               if (type === SLEEP_TYPE) {
@@ -1884,16 +1899,18 @@ async function parseAppleHealthFile(file) {
               }
             }
 
-            // Workouts
+            // Workouts (always have children — never self-close)
             const open_w = '<Workout ';
             let pos_w = 0;
             while (true) {
               const s = safeText.indexOf(open_w, pos_w);
               if (s === -1) break;
-              const e = safeText.indexOf('/>', s);
-              if (e === -1) break;
-              const tag = safeText.slice(s, e + 2);
-              pos_w = e + 2;
+              const tagEnd = safeText.indexOf('>', s);
+              if (tagEnd === -1) break;
+              const end = safeText.indexOf('</Workout>', tagEnd);
+              if (end === -1) break;
+              const tag = safeText.slice(s, tagEnd + 1);
+              pos_w = end + 10;
               workoutRaw.push({
                 startDate:             _getAttr(tag, 'startDate'),
                 endDate:               _getAttr(tag, 'endDate'),
