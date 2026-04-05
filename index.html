@@ -1812,37 +1812,37 @@ async function parseAppleHealthFile(file) {
   let xmlText;
   if (file.name.toLowerCase().endsWith('.zip')) {
     if (file.size > 30 * 1024 * 1024) {
-      // ── Large file path: fflate true streaming parse ──────────────────
-      console.log('[Cadence] Streaming parse started');
+      // ── Large file path: fflate.unzip + manual 64MB text chunking ───────
+      console.log('[Cadence] Large file parse started');
       if (!window.fflate) throw new Error('fflate decompression library failed to load. Try refreshing the page.');
       const ab = await file.arrayBuffer();
       const uint8 = new Uint8Array(ab);
-      const streamResult = await new Promise((resolve, reject) => {
-        const sleepSegs = [], hrReadings = [], hrvRaw = [], inBedSegs = [], workoutRaw = [];
-        let tail = '';
-        let found = false;
-        const decoder = new TextDecoder('utf-8');
+      await new Promise((resolve, reject) => {
+        fflate.unzip(uint8, (err, files) => {
+          if (err) { reject(err); return; }
+          const key = Object.keys(files).find(k => /export\.xml$/i.test(k));
+          if (!key) { reject(new Error('No export.xml found in ZIP')); return; }
 
-        const unzip = new fflate.Unzip();
-        unzip.register(fflate.AsyncUnzipInflate);
+          const xmlBytes = files[key];
+          const CHUNK = 64 * 1024 * 1024; // 64MB slices
+          const decoder = new TextDecoder('utf-8');
+          let tail = '';
 
-        unzip.onfile = (entry) => {
-          if (!/export\.xml$/i.test(entry.name)) { return; }
-          found = true;
+          for (let offset = 0; offset < xmlBytes.length; offset += CHUNK) {
+            const slice = xmlBytes.subarray(offset, offset + CHUNK);
+            const isFinal = offset + CHUNK >= xmlBytes.length;
+            const text = tail + decoder.decode(slice, { stream: !isFinal });
 
-          entry.ondata = (err, chunk, final) => {
-            if (err) { reject(err); return; }
+            // Safe boundary: last complete closing tag
+            const lastRec = text.lastIndexOf('</Record>');
+            const lastWkt = text.lastIndexOf('</Workout>');
+            const boundary = Math.max(
+              lastRec >= 0 ? lastRec + '</Record>'.length : 0,
+              lastWkt >= 0 ? lastWkt + '</Workout>'.length : 0
+            );
 
-            const text = tail + decoder.decode(chunk, { stream: !final });
-            const lastRecordClose  = text.lastIndexOf('</Record>');
-            const lastWorkoutClose = text.lastIndexOf('</Workout>');
-            let lastCloseEnd = -1;
-            if (lastRecordClose  !== -1) lastCloseEnd = Math.max(lastCloseEnd, lastRecordClose  + 9);
-            if (lastWorkoutClose !== -1) lastCloseEnd = Math.max(lastCloseEnd, lastWorkoutClose + 10);
-            const safeText = lastCloseEnd !== -1 ? text.slice(0, lastCloseEnd) : '';
-            tail = lastCloseEnd !== -1 ? text.slice(lastCloseEnd) : text;
-
-            console.log('[Cadence] chunk raw length:', chunk.length, '| text length:', text.length, '| safeText length:', safeText.length, '| tail length:', tail.length, '| first 200 chars of safeText:', safeText.slice(0, 200));
+            const safeText = boundary > 0 ? text.slice(0, boundary) : (isFinal ? text : '');
+            tail = boundary > 0 ? text.slice(boundary) : (isFinal ? '' : text);
 
             // Records
             const open_r = '<Record ';
@@ -1925,23 +1925,15 @@ async function parseAppleHealthFile(file) {
               });
             }
 
-            console.log('[Cadence] Chunk processed — sleep so far:', sleepSegs.length, 'hr:', hrReadings.length, 'hrv:', hrvRaw.length, 'workouts:', workoutRaw.length);
-            if (final) {
-              console.log('[Cadence] Stream complete — final counts:', sleepSegs.length, hrReadings.length, hrvRaw.length, workoutRaw.length);
-              resolve({ sleepSegs, hrReadings, hrvRaw, inBedSegs, workoutRaw });
-            }
-          };
+            console.log('[Cadence] chunk offset:', (offset/1024/1024).toFixed(0)+'MB',
+              '| safeText:', safeText.length, '| tail:', tail.length);
+          }
 
-          entry.start();
-        };
-
-        unzip.push(uint8, true);
-        setTimeout(() => { if (!found) reject(new Error('No export.xml found in ZIP')); }, 500);
+          resolve();
+        });
       });
-
-      ({ sleepSegs, hrReadings, hrvRaw, inBedSegs, workoutRaw } = streamResult);
       usedStreamingPath = true;
-      console.log('[Cadence] Streaming parse complete — sleep:', sleepSegs.length, 'hr:', hrReadings.length, 'hrv:', hrvRaw.length);
+      console.log('[Cadence] Large file parse complete — sleep:', sleepSegs.length, 'hr:', hrReadings.length, 'hrv:', hrvRaw.length);
     } else {
       // ── Small file path: JSZip (unchanged) ───────────────────────────
       // 3a. JSZip available?
