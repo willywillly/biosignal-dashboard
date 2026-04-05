@@ -210,6 +210,12 @@
   }
   .fact-line.in { opacity: 1; transform: none; }
   .fact-line strong { color: var(--text); font-weight: 700; }
+  .an-large-note {
+    font-size: 12px; color: var(--muted); text-align: center; margin-top: 16px;
+    opacity: 0; transition: opacity .55s ease;
+    display: none;
+  }
+  .an-large-note.in { opacity: 1; }
   .fact-check {
     width: 22px; height: 22px; border-radius: 50%; background: var(--lime-bg);
     border: 1.5px solid var(--lime-border); display: flex; align-items: center;
@@ -808,6 +814,7 @@
 
     <div class="an-status" id="an-status">Reading your health data…</div>
     <div class="an-facts" id="an-facts"></div>
+    <div class="an-large-note" id="an-large-note">Large export detected — if this takes a while or stalls, try desktop Chrome.</div>
 
     <div class="an-score" id="an-score">
       <div class="an-score-ring">
@@ -2135,6 +2142,17 @@ async function startAnalysis() {
   statusEl.style.opacity = '1';
   statusEl.textContent   = 'Reading your Health export…';
 
+  // Large-file note: show if file >30 MB, hide on successful parse within 10s
+  const largeNoteEl = $('an-large-note');
+  largeNoteEl.classList.remove('in');
+  largeNoteEl.style.display = 'none';
+  const _largeFile = window._pendingFile && window._pendingFile.size > 30 * 1024 * 1024;
+  const _largeNoteStart = Date.now();
+  if (_largeFile) {
+    largeNoteEl.style.display = '';
+    requestAnimationFrame(() => requestAnimationFrame(() => largeNoteEl.classList.add('in')));
+  }
+
   function addFact(html) {
     const div = document.createElement('div');
     div.className = 'fact-line';
@@ -2193,6 +2211,12 @@ async function startAnalysis() {
     console.warn('[Cadence] Parse failed:', parseError);
     window._pendingFile = null;
     return;
+  }
+
+  // Hide large-file note if parsing finished within 10 s
+  if (_largeFile && (Date.now() - _largeNoteStart) < 10000) {
+    largeNoteEl.classList.remove('in');
+    setTimeout(() => { largeNoteEl.style.display = 'none'; }, 600);
   }
 
   // ── Console diagnostics ──────────────────────────────────────────────
