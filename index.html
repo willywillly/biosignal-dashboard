@@ -116,7 +116,17 @@
   .land-line + .land-line { margin-top: 2px; }
   .land-privacy {
     font-size: 13px; font-weight: 400; color: var(--muted); line-height: 1.6;
-    opacity: 0; transition: opacity 500ms ease; margin-bottom: 32px;
+    opacity: 0; transition: opacity 500ms ease; margin-bottom: 12px;
+  }
+  .land-instructions {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 16px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 600ms ease;
+    max-width: 320px;
   }
   .land-btn {
     width: 100%; max-width: 320px; padding: 16px 24px;
@@ -142,6 +152,11 @@
   .land-howto-body ol { font-size: 12px; color: var(--muted); line-height: 2; padding-left: 18px; text-align: left; }
   .land-howto-body strong { color: var(--text); font-weight: 600; }
   .land-error { font-size: 12px; color: var(--red); margin-top: 14px; min-height: 18px; font-weight: 500; }
+  .sleep-setup-guide { text-align: left; max-width: 340px; margin: 0 auto; }
+  .sleep-setup-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; text-align: center; }
+  .sleep-setup-steps { font-size: 12px; color: var(--muted); line-height: 2; padding-left: 18px; margin-bottom: 10px; }
+  .sleep-setup-steps strong { color: var(--text); font-weight: 600; }
+  .sleep-setup-note { font-size: 11px; color: var(--faint); line-height: 1.5; text-align: center; font-style: italic; }
 
   /* ── SCREEN 2: ANALYSIS ─────────────────────────────────────────── */
   #screen-analysis {
@@ -633,7 +648,7 @@
       <div class="land-line" id="land-line-2">Now you can see it.</div>
     </div>
     <p class="land-privacy" id="land-privacy">Private by design. Your data never leaves your device.</p>
-    <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px;text-align:center;">Open the Health app → tap your profile photo → scroll all the way down → tap Export All Health Data → save the zip to your phone</p>
+    <p class="land-instructions" id="land-instructions">Open the <strong>Health app</strong> → tap your profile photo → scroll to the bottom → tap <strong>Export All Health Data</strong> → save the zip to your phone</p>
     <input type="file" id="file-input" accept=".zip,.xml" hidden>
     <button class="land-btn" id="land-btn" onclick="$('file-input').click()">
       Import your Apple Health data
@@ -1033,7 +1048,8 @@ const TIMING = {
   afterLine1:      1200,   // delay before "Now you can see it." fades in
   afterLine2:      1000,   // delay before privacy note fades in
   afterPrivacy:     700,   // delay before button fades in
-  afterButton:      500,   // delay before how-to link fades in
+  afterButton:      500,   // delay before instructions fade in
+  afterInstructions: 400,  // delay after instructions fade in
 
   // Screen-to-screen fade transitions
   fadeOut:          300,   // ms for current screen to fade out
@@ -1338,6 +1354,8 @@ async function playLandingAnimation() {
 
   $('land-btn').style.opacity = '1';
   await delay(TIMING.afterButton);
+
+  $('land-instructions').style.opacity = '1';
 
 }
 
@@ -2016,8 +2034,26 @@ async function startAnalysis() {
     await fadeToScreen('screen-landing');
     const le = $('land-error');
     if (le) {
-      le.textContent = "We couldn't read your file. Make sure you're uploading the Apple Health export zip or XML file.";
-      setTimeout(() => { le.textContent = ''; }, 6000);
+      const isNoSleep =
+        parseError.includes('No sleep tracking') ||
+        parseError.includes('Not enough sleep data');
+
+      if (isNoSleep) {
+        le.innerHTML = `
+        <div class="sleep-setup-guide">
+          <p class="sleep-setup-title">Sleep tracking isn't enabled yet</p>
+          <ol class="sleep-setup-steps">
+            <li>Open the <strong>Health app</strong> → Browse → Sleep → <strong>Set Up Sleep</strong></li>
+            <li>Open the <strong>Watch app</strong> → Sleep → turn on <strong>Track Sleep with Apple Watch</strong></li>
+            <li>Wear your watch to bed for a few nights, then export again</li>
+          </ol>
+          <p class="sleep-setup-note">Already wearing your watch? Your export may have HRV and heart rate data — enabling sleep tracking will unlock the full picture.</p>
+        </div>`;
+        setTimeout(() => { le.innerHTML = ''; }, 18000);
+      } else {
+        le.textContent = "We couldn't read your file. Make sure you're uploading the Apple Health export zip or XML file.";
+        setTimeout(() => { le.textContent = ''; }, 6000);
+      }
     }
     console.warn('[Cadence] Parse failed:', parseError);
     window._pendingFile = null;
