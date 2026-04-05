@@ -1906,7 +1906,9 @@ async function parseAppleHealthFile(file) {
               });
             }
 
+            console.log('[Cadence] Chunk processed — sleep so far:', sleepSegs.length, 'hr:', hrReadings.length, 'hrv:', hrvRaw.length, 'workouts:', workoutRaw.length);
             if (final) {
+              console.log('[Cadence] Stream complete — final counts:', sleepSegs.length, hrReadings.length, hrvRaw.length, workoutRaw.length);
               resolve({ sleepSegs, hrReadings, hrvRaw, inBedSegs, workoutRaw });
             }
           };
