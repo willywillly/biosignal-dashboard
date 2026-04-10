@@ -2987,11 +2987,9 @@ function skipCheckin() {
 // After each dashboard render, saves a one-line summary to a rolling log.
 // The last 30 entries are sent to the backend as context_block on every call.
 function saveSessionSummary(score, meta) {
-  let line = `${today()}: score=${score}, bedtime=${fmtHour(meta.medianOnset%24)}, sleep=${meta.avgSleepHrs.toFixed(1)}h, variance=${Math.round(meta.onsetSdMin)}min, jetlag=${Math.round(meta.jetlagMin||0)}min, nights=${meta.totalNights}`;
-  if (meta.avgHRV)                                        line += `, avg_hrv=${meta.avgHRV}ms`;
-  if (meta.hrv_trend)                                     line += `, hrv_trend=${meta.hrv_trend}`;
-  if (meta.corr_hrv_sleep    != null)                     line += `, corr_hrv_sleep=${meta.corr_hrv_sleep}`;
-  if (meta.corr_hrv_variance != null)                     line += `, corr_hrv_variance=${meta.corr_hrv_variance}`;
+  let line = `${today()}: cadence_score=${score}, bedtime=${fmtHour(meta.medianOnset%24)}, sleep=${meta.avgSleepHrs.toFixed(1)}h, variance=${Math.round(meta.onsetSdMin)}min, jetlag=${Math.round(meta.jetlagMin||0)}min, nights=${meta.totalNights}`;
+  if (meta.avgHRV)        line += `, avg_hrv=${meta.avgHRV}ms`;
+  if (meta.hrv_trend)     line += `, hrv_trend=${meta.hrv_trend}`;
   appendContext(line);
 }
 
